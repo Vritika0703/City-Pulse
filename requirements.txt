@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+google-genai
+pandas
+scikit-learn
+chromadb
+python-dotenv
+websockets
+pydantic-settings
+httpx
