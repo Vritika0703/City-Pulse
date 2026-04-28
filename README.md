@@ -75,5 +75,4 @@ A geo-spatial map that clusters 311 signals into "Intensity Sectors," allowing f
 ## 📝 Submission Note
 This project was developed for the **[Your Competition/Course Name]**. It represents a shift from reactive urban mapping to **Proactive Urban Intelligence.**
 
-**Developed by:** [Your Name/Team Name]
-**Contact:** [Your Email/LinkedIn]
+**Developed by:** Sakshi Sawant & Vritika Srivatsav
