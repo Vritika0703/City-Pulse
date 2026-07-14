@@ -336,9 +336,20 @@ function CityPulseApp() {
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar scroll-smooth bg-gradient-to-b from-transparent to-blue-900/5">
               {userTranscripts.length === 0 && transcripts.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-10 grayscale">
-                  <Globe size={64} className="mb-4 animate-spin-slow" />
-                  <p className="text-xs font-bold uppercase tracking-widest">Scanning Urban Signals...</p>
+                <div className="h-full flex flex-col items-center justify-center gap-4 px-4">
+                  <Globe size={40} className="text-blue-500 animate-spin-slow opacity-60" />
+                  <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">Ask a question about NYC urban infrastructure</p>
+                  <div className="flex flex-col gap-2 w-full">
+                    {["What's the rat situation in Brooklyn?", "How bad is flooding in Queens?", "Analyse heat complaints in the Bronx"].map((example, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { sendText(example); }}
+                        className="w-full text-left px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] text-gray-400 hover:bg-blue-500/10 hover:border-blue-500/30 hover:text-blue-300 transition-all font-medium"
+                      >
+                        💬 {example}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <>
@@ -383,7 +394,7 @@ function CityPulseApp() {
               <form onSubmit={(e) => { e.preventDefault(); const t = e.target.query.value; if (t) { sendText(t); e.target.reset(); } }} className="relative">
                 <input
                   name="query"
-                  placeholder="Input tactical query..."
+                  placeholder="Ask about NYC infrastructure, e.g. 'Rat situation in Brooklyn'..."
                   disabled={isProcessing}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-xs focus:outline-none focus:border-blue-500/50 transition-all pr-12 placeholder:text-gray-600 font-medium disabled:opacity-50"
                 />
