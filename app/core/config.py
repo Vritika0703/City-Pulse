@@ -13,9 +13,12 @@ class Settings(BaseSettings):
 
     # Groq API
     GROQ_API_KEY: Optional[str] = None
+    # Model name — can be overridden via env var on Render without redeploying
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
-    # ChromaDB
+    # ChromaDB — set USE_MEMORY_DB=true on Render (ephemeral filesystem)
     CHROMA_DB_PATH: str = "./chroma_db"
+    USE_MEMORY_DB: bool = False
 
     model_config = {"env_file": ".env"}
 

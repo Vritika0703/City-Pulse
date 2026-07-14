@@ -716,7 +716,7 @@ class GeminiLiveService:
 
                             try:
                                 response = await self.groq.chat.completions.create(
-                                    model="llama-3.3-70b-versatile",
+                                    model=settings.GROQ_MODEL,
                                     messages=turn_messages,
                                     tools=groq_tools,
                                     tool_choice="auto"
@@ -846,7 +846,7 @@ class GeminiLiveService:
                                     "CRITICAL: Use the pre-computed score. Focus on borough-specific economic forecasting."
                                 )})
                                 final_response = await self.groq.chat.completions.create(
-                                    model="llama-3.3-70b-versatile",
+                                    model=settings.GROQ_MODEL,
                                     messages=turn_messages
                                 )
                                 res_msg = final_response.choices[0].message

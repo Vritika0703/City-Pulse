@@ -24,7 +24,13 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
 
 class VectorDB:
     def __init__(self):
-        self.chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
+        if settings.USE_MEMORY_DB:
+            # Render free tier has an ephemeral filesystem — use in-memory DB
+            self.chroma_client = chromadb.EphemeralClient()
+            logger.info("VectorDB using in-memory (ephemeral) ChromaDB client.")
+        else:
+            self.chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
+            logger.info("VectorDB using persistent ChromaDB client.")
         self.embedding_fn = GeminiEmbeddingFunction()
         self.collection = self.chroma_client.get_or_create_collection(
             name="city_reports",
