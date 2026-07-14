@@ -116,7 +116,19 @@ function CityPulseApp() {
   const buildIntervention = (name) => {
     const b = topBorough, i = primaryIssue, ir = primaryIssueRaw;
     // Get active domain types from backend; fallback to single primary issue
-    const activeTypes = charts?.matched_types?.length ? charts.matched_types : [charts?.complaint_type_used || ir];
+    let activeTypes = charts?.matched_types?.length ? charts.matched_types : [charts?.complaint_type_used || ir];
+    
+    // Normalize types so sub-types (e.g. "Noise - Street/Sidewalk") and broad queries ("All Types") 
+    // map correctly to our top-level template keys.
+    const baseKeys = Object.keys(DOMAIN_INTERVENTION_TEMPLATES);
+    activeTypes = activeTypes.map(t => {
+      let match = baseKeys.find(key => t.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(t.toLowerCase()));
+      if (!match) match = baseKeys.find(key => ir.toLowerCase().includes(key.toLowerCase()));
+      return match || t;
+    });
+    // Deduplicate in case multiple types resolved to the same base key
+    activeTypes = [...new Set(activeTypes)];
+
     const typeCounts = charts?.type_counts || {};
     const isMulti = activeTypes.length >= 2;
 
