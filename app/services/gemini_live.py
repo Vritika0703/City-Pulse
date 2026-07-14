@@ -427,12 +427,14 @@ class GeminiLiveService:
 
                 # Persist for final report prompt so LLM uses EXACT backend scores
                 computed_scores[0] = {
-                    "coord":    coord_score,
-                    "infra":    infra_score,
-                    "health":   health_score,
-                    "mobility": mobility_score,
-                    "borough":  top_b,
-                    "issue":    primary_issue,
+                    "coord":          coord_score,
+                    "infra":          infra_score,
+                    "health":         health_score,
+                    "mobility":       mobility_score,
+                    "borough":        top_b,
+                    "issue":          primary_issue,
+                    "is_broad_query": len(matched_types) == 0 and not clean_type,
+                    "vague_term":     user_text,
                 }
 
                 resolution_pct = resolution_percentage  # from top scope
@@ -920,11 +922,13 @@ class GeminiLiveService:
                                 sc_val = sc.get('coord','[X]') if sc else '[X]'
                                 # Detect broad/vague queries where no specific 311 type was matched
                                 broad_query_note = ""
-                                if not matched_types and not clean_type:
+                                if sc and sc.get('is_broad_query'):
+                                    borough_name = sc.get('borough', 'the borough')
                                     broad_query_note = (
-                                        f"\n\nBROAD QUERY DETECTED: The user's term in '{user_text}' does not directly correspond to a specific NYC 311 complaint category. "
-                                        f"You MUST open your report with exactly this acknowledgment (filling in the blanks): "
-                                        f"\"'[vague term from query]' doesn't map to a single 311 category — so here is the complete infrastructure picture for [borough]: [1-sentence summary of what the data shows across all complaint types].\"\n"
+                                        f"\n\nBROAD QUERY DETECTED: The user used a vague term that does not map to a specific NYC 311 complaint category. "
+                                        f"You MUST start your report with this exact acknowledgment (fill in the blanks naturally): "
+                                        f"\"'[vague term from the user query]' doesn't correspond to a specific 311 category — "
+                                        f"so here is the complete infrastructure picture for {borough_name}: [1 sentence summarising what the cross-category data shows].\"\n"
                                     )
                                 turn_messages.append({"role": "user", "content": (
                                     f"Synthesize a STRATEGIC ECONOMIC REPORT for the query: '{user_text}'.{scores_block}{broad_query_note}\n"
