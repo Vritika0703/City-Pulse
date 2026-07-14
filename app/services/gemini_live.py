@@ -95,10 +95,11 @@ class GeminiLiveService:
                     'sewer': 'Sewer',
                     'pipe': 'Water System',
                     'drain': 'Sewer',
-                    'storm': 'Sewer',
-                    'weather': 'Sewer',
-                    'hurricane': 'Sewer',
-                    'rain': 'Sewer',
+                    # Weather words are broad — don't force them into Sewer/Water
+                    'storm': None,
+                    'weather': None,
+                    'hurricane': None,
+                    'rain': None,
                     # Sanitation / Trash
                     'trash': 'Dirty Condition',
                     'garbage': 'Dirty Condition',
@@ -222,7 +223,7 @@ class GeminiLiveService:
                 DOMAIN_FETCH_MAP = [
                     (['electric', 'electricity', 'power outage', 'lamp'],         'Electrical'),
                     (['water', 'flooding', 'flood', 'sewage', 'sewer', 'leak',
-                      'pipe', 'drain', 'storm', 'rain', 'hurricane', 'weather'],  'Water System'),
+                      'pipe', 'drain'],                                            'Water System'),
                     (['trash', 'garbage', 'sanitation', 'litter', 'waste',
                       'dump', 'dumping', 'dirty', 'filth'],                        'Dirty Condition'),
                     (['noise', 'loud', 'sound', 'music', 'party'],                 'Noise'),
