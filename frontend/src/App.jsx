@@ -381,7 +381,18 @@ function CityPulseApp() {
                             <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Coordinator Response</span>
                           </div>
                           <div className="max-w-[100%] px-4 py-4 bg-white/5 border border-white/10 text-gray-200 rounded-2xl rounded-tl-sm text-[11px] leading-relaxed markdown-body shadow-inner">
-                            <ReactMarkdown>{msg.text}</ReactMarkdown>
+                            {(() => {
+                              let displayText = msg.text;
+                              if (isInterventionActive && charts?.agents?.coordinator?.score) {
+                                const baseScore = charts.agents.coordinator.score;
+                                const regex = new RegExp(`(\\*\\*🚨 OVERALL OPERATIONAL RISK:\\*\\*\\s*)${baseScore}(/100)`, 'g');
+                                const regexFallback = new RegExp(`(🚨 OVERALL OPERATIONAL RISK:\\s*)${baseScore}(/100)`, 'g');
+                                const mitigationTag = ` **[MITIGATED: ${activeIntervention.toUpperCase()}]**`;
+                                displayText = displayText.replace(regex, `$1${riskScore}$2${mitigationTag}`);
+                                displayText = displayText.replace(regexFallback, `$1${riskScore}$2${mitigationTag}`);
+                              }
+                              return <ReactMarkdown>{displayText}</ReactMarkdown>;
+                            })()}
                           </div>
                         </div>
                       )
