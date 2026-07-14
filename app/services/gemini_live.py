@@ -434,6 +434,7 @@ class GeminiLiveService:
                     "borough":        top_b,
                     "issue":          primary_issue,
                     "is_broad_query": len(matched_types) == 0 and not clean_type,
+                    "interpreted_as": clean_type or (', '.join(matched_types) if matched_types else None),
                     "vague_term":     user_text,
                 }
 
@@ -920,16 +921,25 @@ class GeminiLiveService:
                                         f"- Borough: {sc.get('borough','?')}\n"
                                     )
                                 sc_val = sc.get('coord','[X]') if sc else '[X]'
-                                # Detect broad/vague queries where no specific 311 type was matched
-                                broad_query_note = ""
-                                if sc and sc.get('is_broad_query'):
+                                # Always add a query interpretation note so users understand what was matched
+                                query_note = ""
+                                if sc:
                                     borough_name = sc.get('borough', 'the borough')
-                                    broad_query_note = (
-                                        f"\n\nBROAD QUERY DETECTED: The user used a vague term that does not map to a specific NYC 311 complaint category. "
-                                        f"You MUST start your report with this exact acknowledgment (fill in the blanks naturally): "
-                                        f"\"'[vague term from the user query]' doesn't correspond to a specific 311 category — "
-                                        f"so here is the complete infrastructure picture for {borough_name}: [1 sentence summarising what the cross-category data shows].\"\n"
-                                    )
+                                    interpreted_as = sc.get('interpreted_as')
+                                    is_broad = sc.get('is_broad_query', False)
+                                    if is_broad:
+                                        query_note = (
+                                            f"\n\nQUERY INTERPRETATION NOTE: The user's query did not match any specific NYC 311 complaint category. "
+                                            f"You MUST open your report with: \"'[extract the vague word from the user query]' doesn't map to a specific 311 category — "
+                                            f"so here is the complete infrastructure picture for {borough_name}: [1-sentence cross-category summary].\"\n"
+                                        )
+                                    elif interpreted_as:
+                                        query_note = (
+                                            f"\n\nQUERY INTERPRETATION NOTE: The user's query was interpreted and mapped to the '{interpreted_as}' complaint category in NYC 311. "
+                                            f"You MUST open your report with: \"'[extract the key word from the user query]' was interpreted as '{interpreted_as}' complaints in NYC's 311 system — "
+                                            f"here is what the data shows for {borough_name}.\"\n"
+                                        )
+                                broad_query_note = query_note  # keep variable name for template below
                                 turn_messages.append({"role": "user", "content": (
                                     f"Synthesize a STRATEGIC ECONOMIC REPORT for the query: '{user_text}'.{scores_block}{broad_query_note}\n"
                                     "Format EXACTLY as:\n"
