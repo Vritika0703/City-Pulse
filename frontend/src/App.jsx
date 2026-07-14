@@ -132,11 +132,18 @@ function CityPulseApp() {
     const typeCounts = charts?.type_counts || {};
     const isMulti = activeTypes.length >= 2;
 
+    // Create a deterministic variance based on borough and issue so intervention impacts are unique per scenario
+    const seed = (b + i).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const v1 = (seed % 11) - 5;       // -5 to +5
+    const v2 = ((seed * 2) % 15) - 7; // -7 to +7
+    const v3 = ((seed * 3) % 9) - 4;  // -4 to +4
+    const v4 = ((seed * 5) % 13) - 6; // -6 to +6
+
     const cfgMap = {
-      "Deploy Repair Teams": { riskReduction: 35, infraReduction: 45, healthReduction: 10, mobilityReduction: 15, icon: "👷" },
-      "Issue Health Advisory": { riskReduction: 25, infraReduction: 5, healthReduction: 40, mobilityReduction: 10, icon: "⚕️" },
-      "Optimize Traffic Flow": { riskReduction: 20, infraReduction: 5, healthReduction: 5, mobilityReduction: 50, icon: "🚦" },
-      "Increase Monitoring": { riskReduction: 15, infraReduction: 15, healthReduction: 15, mobilityReduction: 15, icon: "🛰️" },
+      "Deploy Repair Teams": { riskReduction: Math.max(10, 35 + v1), infraReduction: Math.max(5, 45 + v2), healthReduction: Math.max(5, 10 + v3), mobilityReduction: Math.max(5, 15 + v4), icon: "👷" },
+      "Issue Health Advisory": { riskReduction: Math.max(10, 25 + v2), infraReduction: Math.max(5, 5 + v3), healthReduction: Math.max(5, 40 + v1), mobilityReduction: Math.max(5, 10 + v4), icon: "⚕️" },
+      "Optimize Traffic Flow": { riskReduction: Math.max(10, 20 + v3), infraReduction: Math.max(5, 5 + v4), healthReduction: Math.max(5, 5 + v1), mobilityReduction: Math.max(5, 50 + v2), icon: "🚦" },
+      "Increase Monitoring": { riskReduction: Math.max(10, 15 + v4), infraReduction: Math.max(5, 15 + v1), healthReduction: Math.max(5, 15 + v2), mobilityReduction: Math.max(5, 15 + v3), icon: "🛰️" },
     };
     const cfg = cfgMap[name];
 
