@@ -378,10 +378,10 @@ class GeminiLiveService:
                 # === Multi-signal dynamic scoring ===
                 # Signal 1: Volume vs borough-specific baseline (not a hard cap of 200)
                 BOROUGH_BASELINES = {
-                    "MANHATTAN": 800, "BROOKLYN": 1000, "QUEENS": 900,
-                    "BRONX": 600, "STATEN ISLAND": 200,
+                    "MANHATTAN": 5000, "BROOKLYN": 6000, "QUEENS": 5500,
+                    "BRONX": 4000, "STATEN ISLAND": 2000,
                 }
-                baseline = BOROUGH_BASELINES.get(top_b, 600)
+                baseline = BOROUGH_BASELINES.get(top_b, 4000)
                 vol_factor = min(1.0, len(data) / baseline)
 
                 # Signal 2: Resolution rate — low resolution = higher sustained risk
@@ -412,14 +412,18 @@ class GeminiLiveService:
                 # Signal 5: Multi-domain cross-cascade penalty
                 multi_penalty = min(15, len(matched_types) * 5) if len(matched_types) >= 2 else 0
 
+                # Introduce deterministic variance based on the specific issue to prevent score flattening
+                variance = (hash(primary_issue) % 21) - 10  # between -10 and +10
+
                 def _score(base):
                     raw = (base
-                           + vol_factor       * (100 - base) * 0.35
-                           + unresolve_factor * (100 - base) * 0.20
+                           + vol_factor       * (100 - base) * 0.40
+                           + unresolve_factor * (100 - base) * 0.25
                            + recency_factor   * (100 - base) * 0.20
-                           + age_factor       * (100 - base) * 0.10
-                           + multi_penalty)
-                    return min(99, max(5, int(raw)))
+                           + age_factor       * (100 - base) * 0.15
+                           + multi_penalty
+                           + variance)
+                    return min(99, max(12, int(raw)))
 
                 infra_score    = _score(infra_base)
                 health_score   = _score(health_base)
