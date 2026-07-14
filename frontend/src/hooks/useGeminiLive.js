@@ -109,7 +109,7 @@ export function useGeminiLive() {
       setIsProcessing(true);
       setCharts(null); // Clear previous chart/stats data so it doesn't show stale numbers for non-data questions
       if (processingTimeout.current) clearTimeout(processingTimeout.current);
-      processingTimeout.current = setTimeout(() => setIsProcessing(false), 30000);
+      processingTimeout.current = setTimeout(() => setIsProcessing(false), 90000);
     }
   }, []);
 
