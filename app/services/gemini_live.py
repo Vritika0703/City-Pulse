@@ -84,51 +84,127 @@ class GeminiLiveService:
                     'lights': 'Street Light Condition',
                     'street light': 'Street Light Condition',
                     'streetlight': 'Street Light Condition',
-                    # Water
+                    'lamp': 'Street Light Condition',
+                    # Water / Flooding
                     'water': 'Water System',
                     'flooding': 'Sewer',
                     'flood': 'Sewer',
                     'leak': 'Water System',
                     'sewage': 'Sewer',
                     'sewer': 'Sewer',
+                    'pipe': 'Water System',
+                    'drain': 'Sewer',
+                    'storm': 'Sewer',
+                    'weather': 'Sewer',
+                    'hurricane': 'Sewer',
+                    'rain': 'Sewer',
                     # Sanitation / Trash
                     'trash': 'Dirty Condition',
                     'garbage': 'Dirty Condition',
                     'sanitation': 'Sanitation Condition',
                     'litter': 'Dirty Condition',
                     'waste': 'Dirty Condition',
+                    'dump': 'Dirty Condition',
+                    'dumping': 'Dirty Condition',
+                    'dirty': 'Dirty Condition',
+                    'filth': 'Dirty Condition',
                     # Noise
                     'noise': 'Noise',
                     'loud': 'Noise',
-                    # Traffic / Parking
+                    'sound': 'Noise',
+                    'music': 'Noise',
+                    'party': 'Noise',
+                    # Traffic / Parking / Streets
                     'traffic': 'Traffic',
                     'parking': 'Illegal Parking',
                     'congestion': 'Traffic',
-                    'pothole': 'Street Light Condition',
-                    # Heat
+                    'pothole': 'Street Condition',
+                    'road': 'Street Condition',
+                    'street': 'Street Condition',
+                    'sidewalk': 'Street Condition',
+                    'pavement': 'Street Condition',
+                    'crosswalk': 'Street Condition',
+                    'curb': 'Street Condition',
+                    # Heat / Hot Water
                     'heat': 'HEAT/HOT WATER',
                     'hot water': 'HEAT/HOT WATER',
                     'heating': 'HEAT/HOT WATER',
                     'boiler': 'HEAT/HOT WATER',
-                    # Rodent
+                    'temperature': 'HEAT/HOT WATER',
+                    # Rodent / Pest
                     'rodent': 'Rodent',
                     'rat': 'Rodent',
                     'rats': 'Rodent',
                     'pest': 'Rodent',
-                    # Building
+                    'mice': 'Rodent',
+                    'mouse': 'Rodent',
+                    'cockroach': 'Rodent',
+                    'bug': 'Rodent',
+                    'insect': 'Rodent',
+                    'infestation': 'Rodent',
+                    # Building / Housing / Structure
                     'building': 'Building/Use',
                     'elevator': 'Elevator',
-                    'construction': 'Illegal Tree Damage',
+                    'construction': 'Building/Use',
                     'collapse': 'Building/Use',
+                    'housing': 'Building/Use',
+                    'apartment': 'Building/Use',
+                    'landlord': 'Building/Use',
+                    'facade': 'Building/Use',
+                    'scaffold': 'Building/Use',
+                    'mold': 'Indoor Air Quality',
+                    'mould': 'Indoor Air Quality',
+                    'asbestos': 'Asbestos',
+                    'lead': 'Lead',
+                    # Graffiti
+                    'graffiti': 'Graffiti',
+                    'vandalism': 'Graffiti',
+                    'tagging': 'Graffiti',
+                    # Trees / Parks
+                    'tree': 'Dead/Dying Tree',
+                    'trees': 'Dead/Dying Tree',
+                    'branch': 'Dead/Dying Tree',
+                    # Air / Smoking
+                    'smoke': 'Smoking',
+                    'smoking': 'Smoking',
+                    'cigarette': 'Smoking',
+                    'air quality': 'Air Quality',
+                    'pollution': 'Air Quality',
+                    # Broad / Vague — map to None so all complaint types are fetched
+                    'climate': None,
+                    'environment': None,
+                    'environmental': None,
+                    'infrastructure': None,
+                    'urban': None,
+                    'city': None,
+                    'overall': None,
+                    'general': None,
+                    'everything': None,
+                    'situation': None,
+                    'condition': None,
+                    'status': None,
+                    'safety': None,
+                    'health': None,
+                    'public health': None,
+                    'quality of life': None,
+                    'quality': None,
+                    'neighborhood': None,
+                    'community': None,
+                    'transit': None,
+                    'subway': None,
+                    'mta': None,
+                    'train': None,
+                    'bus': None,
+                    'transportation': None,
                 }
                 if complaint_type:
                     alias_key = complaint_type.lower().strip()
                     if alias_key in COMPLAINT_ALIASES:
-                        complaint_type = COMPLAINT_ALIASES[alias_key]
+                        complaint_type = COMPLAINT_ALIASES[alias_key]  # can be None for broad terms
                     # Also try partial match
                     else:
                         for k, v in COMPLAINT_ALIASES.items():
-                            if k in alias_key:
+                            if k and k in alias_key:
                                 complaint_type = v
                                 break
 
@@ -143,18 +219,29 @@ class GeminiLiveService:
                 q_words = active_user_query[0].lower() if active_user_query[0] else ''
                 # Map each domain keyword group -> its canonical NYC 311 complaint type
                 DOMAIN_FETCH_MAP = [
-                    (['electric', 'electricity', 'power outage'],    'Electrical'),
-                    (['water', 'flooding', 'flood', 'sewage', 'sewer', 'leak'], 'Water System'),
-                    (['trash', 'garbage', 'sanitation', 'litter', 'waste'],     'Dirty Condition'),
-                    (['noise', 'loud', 'sound'],                     'Noise'),
-                    (['traffic', 'congestion'],                      'Traffic'),
-                    (['parking'],                                    'Illegal Parking'),
-                    (['heat', 'hot water', 'heating', 'boiler'],     'HEAT/HOT WATER'),
-                    (['rodent', 'rat', 'rats', 'pest'],              'Rodent'),
-                    (['building', 'collapse'],                       'Building/Use'),
-                    (['elevator'],                                   'Elevator'),
-                    (['street light', 'streetlight'],                'Street Light Condition'),
-                    (['power'],                                      'Power Outage'),
+                    (['electric', 'electricity', 'power outage', 'lamp'],         'Electrical'),
+                    (['water', 'flooding', 'flood', 'sewage', 'sewer', 'leak',
+                      'pipe', 'drain', 'storm', 'rain', 'hurricane', 'weather'],  'Water System'),
+                    (['trash', 'garbage', 'sanitation', 'litter', 'waste',
+                      'dump', 'dumping', 'dirty', 'filth'],                        'Dirty Condition'),
+                    (['noise', 'loud', 'sound', 'music', 'party'],                 'Noise'),
+                    (['traffic', 'congestion'],                                     'Traffic'),
+                    (['parking'],                                                   'Illegal Parking'),
+                    (['pothole', 'road', 'street', 'sidewalk', 'pavement',
+                      'crosswalk', 'curb'],                                        'Street Condition'),
+                    (['heat', 'hot water', 'heating', 'boiler', 'temperature'],    'HEAT/HOT WATER'),
+                    (['rodent', 'rat', 'rats', 'pest', 'mice', 'mouse',
+                      'cockroach', 'bug', 'insect', 'infestation'],                'Rodent'),
+                    (['building', 'collapse', 'housing', 'apartment',
+                      'landlord', 'facade', 'scaffold'],                           'Building/Use'),
+                    (['elevator'],                                                  'Elevator'),
+                    (['street light', 'streetlight', 'lights', 'lamp'],            'Street Light Condition'),
+                    (['power'],                                                     'Power Outage'),
+                    (['graffiti', 'vandalism', 'tagging'],                         'Graffiti'),
+                    (['tree', 'trees', 'branch'],                                  'Dead/Dying Tree'),
+                    (['mold', 'mould'],                                             'Indoor Air Quality'),
+                    (['smoke', 'smoking', 'cigarette'],                            'Smoking'),
+                    (['air quality', 'pollution'],                                  'Air Quality'),
                 ]
                 matched_types = []
                 for (keywords, api_type) in DOMAIN_FETCH_MAP:
