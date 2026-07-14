@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const WS_URL = 'ws://localhost:8000/ws/city-pulse';
+// Use the VITE_WS_URL environment variable if set (for production deployment),
+// otherwise fall back to localhost (for local development).
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/city-pulse';
 
 export function useGeminiLive() {
   const [status, setStatus] = useState('disconnected');
