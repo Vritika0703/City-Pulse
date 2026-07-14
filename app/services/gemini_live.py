@@ -918,8 +918,16 @@ class GeminiLiveService:
                                         f"- Borough: {sc.get('borough','?')}\n"
                                     )
                                 sc_val = sc.get('coord','[X]') if sc else '[X]'
+                                # Detect broad/vague queries where no specific 311 type was matched
+                                broad_query_note = ""
+                                if not matched_types and not clean_type:
+                                    broad_query_note = (
+                                        f"\n\nBROAD QUERY DETECTED: The user's term in '{user_text}' does not directly correspond to a specific NYC 311 complaint category. "
+                                        f"You MUST open your report with exactly this acknowledgment (filling in the blanks): "
+                                        f"\"'[vague term from query]' doesn't map to a single 311 category — so here is the complete infrastructure picture for [borough]: [1-sentence summary of what the data shows across all complaint types].\"\n"
+                                    )
                                 turn_messages.append({"role": "user", "content": (
-                                    f"Synthesize a STRATEGIC ECONOMIC REPORT for the query: '{user_text}'.{scores_block}\n"
+                                    f"Synthesize a STRATEGIC ECONOMIC REPORT for the query: '{user_text}'.{scores_block}{broad_query_note}\n"
                                     "Format EXACTLY as:\n"
                                     f"**🚨 OVERALL OPERATIONAL RISK:** {sc_val}/100\n"
                                     f"**🏙️ BOROUGH FOCUS:** {sc.get('borough', '[Borough]') if sc else '[Borough]'}\n\n"
