@@ -33,6 +33,7 @@ SYSTEM_INSTRUCTION = """You are the CityPulse Strategic Intelligence Engine, a h
 TOOL CALL RULES — CRITICAL:
 - ALWAYS call get_311_stats for the requested Borough(s).
 - Use ONLY standard JSON function-calling format. NO XML.
+- BROAD/VAGUE QUERY RULE: If the user's query contains vague or non-specific words such as 'climate', 'environment', 'environmental', 'overall', 'general', 'situation', 'condition', 'status', 'infrastructure', 'urban', 'neighborhood', 'community', 'quality of life', 'safety', 'health', 'transit', 'subway', 'transportation', or any similarly broad concept that does NOT map to a single specific complaint category — you MUST call get_311_stats WITHOUT a complaint_type (omit it or set it to null). Do NOT guess or infer a specific category like 'Noise' or 'Water' for these broad queries. Fetch ALL types and let the data speak.
 
 REPORT FORMAT (STRATEGIC COORDINATOR):
 🚨 OVERALL OPERATIONAL RISK: [0-100]/100
@@ -754,7 +755,7 @@ class GeminiLiveService:
                             },
                             "complaint_type": {
                                 "type": ["string", "null"],
-                                "description": "Category like 'Noise'. Omit or set to null for all types."
+                                "description": "Specific NYC 311 complaint category like 'Noise', 'Rodent', 'HEAT/HOT WATER', 'Water System', 'Dirty Condition', 'Traffic', 'Illegal Parking', 'Building/Use', 'Graffiti'. IMPORTANT: For broad or vague queries where the user says words like 'climate', 'environment', 'overall', 'situation', 'infrastructure', 'neighborhood', 'quality of life', 'safety', 'health', 'transit', 'subway', or any non-specific concept — OMIT this parameter entirely or set it to null to fetch all complaint types."
                             }
                         }
                     }
