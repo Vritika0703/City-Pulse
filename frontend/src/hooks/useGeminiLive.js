@@ -285,7 +285,12 @@ export function useGeminiLive() {
               });
             }
           } else if (msg.type === 'user_transcript') {
-            setUserTranscripts(prev => [...prev, { text: msg.text, ts: Date.now() }]);
+            setUserTranscripts(prev => {
+              if (prev.length > 0 && prev[prev.length - 1].text === msg.text) {
+                return prev;
+              }
+              return [...prev, { text: msg.text, ts: Date.now() }];
+            });
           } else if (msg.type === 'chart_data') {
             setCharts(msg.payload);
           } else if (msg.type === 'error') {
@@ -324,7 +329,12 @@ export function useGeminiLive() {
   const sendText = useCallback(async (text) => {
     const userMsgTs = Date.now();
     lastUserQuery.current = text;
-    setUserTranscripts(prev => [...prev, { text, ts: userMsgTs }]);
+    setUserTranscripts(prev => {
+      if (prev.length > 0 && prev[prev.length - 1].text === text) {
+        return prev;
+      }
+      return [...prev, { text, ts: userMsgTs }];
+    });
     setIsProcessing(true);
 
     if (ws.current?.readyState === WebSocket.OPEN) {
