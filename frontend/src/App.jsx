@@ -263,9 +263,9 @@ function CityPulseApp() {
 
 
 
+  const isInterventionActive = activeIntervention !== null;
   const hasAskedQuery = userTranscripts.length > 0 || transcripts.length > 0 || isInterventionActive;
 
-  const isInterventionActive = activeIntervention !== null;
   const currentIntervention = activeIntervention ? buildIntervention(activeIntervention) : null;
   const originalRiskScore = charts?.agents?.coordinator?.score || 67;
 
