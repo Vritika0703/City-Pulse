@@ -286,10 +286,11 @@ export function useGeminiLive() {
             }
           } else if (msg.type === 'user_transcript') {
             setUserTranscripts(prev => {
-              if (prev.length > 0 && prev[prev.length - 1].text === msg.text) {
+              const now = Date.now();
+              if (prev.some(t => t.text === msg.text && Math.abs(now - t.ts) < 5000)) {
                 return prev;
               }
-              return [...prev, { text: msg.text, ts: Date.now() }];
+              return [...prev, { text: msg.text, ts: now }];
             });
           } else if (msg.type === 'chart_data') {
             setCharts(msg.payload);
@@ -329,12 +330,6 @@ export function useGeminiLive() {
   const sendText = useCallback(async (text) => {
     const userMsgTs = Date.now();
     lastUserQuery.current = text;
-    setUserTranscripts(prev => {
-      if (prev.length > 0 && prev[prev.length - 1].text === text) {
-        return prev;
-      }
-      return [...prev, { text, ts: userMsgTs }];
-    });
     setIsProcessing(true);
 
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -342,6 +337,10 @@ export function useGeminiLive() {
       if (processingTimeout.current) clearTimeout(processingTimeout.current);
       processingTimeout.current = setTimeout(() => setIsProcessing(false), 90000);
     } else {
+      setUserTranscripts(prev => {
+        if (prev.some(t => t.text === text && Math.abs(userMsgTs - t.ts) < 5000)) return prev;
+        return [...prev, { text, ts: userMsgTs }];
+      });
       fetchLiveNYCDataAndRender(text);
     }
   }, [fetchLiveNYCDataAndRender]);
