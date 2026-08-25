@@ -263,16 +263,18 @@ function CityPulseApp() {
 
 
 
+  const hasAskedQuery = userTranscripts.length > 0 || transcripts.length > 0 || isInterventionActive;
+
   const isInterventionActive = activeIntervention !== null;
   const currentIntervention = activeIntervention ? buildIntervention(activeIntervention) : null;
   const originalRiskScore = charts?.agents?.coordinator?.score || 67;
 
   const riskReduction = currentIntervention ? currentIntervention.riskReduction : 0;
-  const riskScore = isProcessing ? "--" : Math.max(12, originalRiskScore - riskReduction);
+  const riskScore = !hasAskedQuery ? "--" : isProcessing ? "--" : Math.max(12, originalRiskScore - riskReduction);
 
-  const riskLevel = isProcessing ? "ANALYZING" : (riskScore > 70 ? 'HIGH' : riskScore > 40 ? 'MEDIUM' : 'LOW');
-  const riskColor = isProcessing ? "text-blue-500" : (riskScore > 70 ? 'text-red-500' : riskScore > 40 ? 'text-yellow-500' : 'text-emerald-500');
-  const riskBg = isProcessing ? "bg-blue-500/10 border-blue-500/20" : (riskScore > 70 ? 'bg-red-500/10 border-red-500/20' : riskScore > 40 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-emerald-500/10 border-emerald-500/20');
+  const riskLevel = !hasAskedQuery ? "STANDBY" : isProcessing ? "ANALYZING" : (riskScore > 70 ? 'HIGH' : riskScore > 40 ? 'MEDIUM' : 'LOW');
+  const riskColor = !hasAskedQuery ? "text-gray-400" : isProcessing ? "text-blue-500" : (riskScore > 70 ? 'text-red-500' : riskScore > 40 ? 'text-yellow-500' : 'text-emerald-500');
+  const riskBg = !hasAskedQuery ? "bg-white/5 border-white/10" : isProcessing ? "bg-blue-500/10 border-blue-500/20" : (riskScore > 70 ? 'bg-red-500/10 border-red-500/20' : riskScore > 40 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-emerald-500/10 border-emerald-500/20');
 
   // When intervention is active: use intervention cascade/headlines (already context-aware via template literals)
   // For agents: use REAL scores from backend but apply intervention reduction per domain
@@ -297,7 +299,9 @@ function CityPulseApp() {
           <div className="flex flex-col">
             <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] leading-none mb-1">Current NYC Risk Status</span>
             <div className="flex items-center gap-3">
-              <span className={`text-2xl font-black italic tracking-tighter leading-none ${riskColor} transition-all duration-1000`}>{riskLevel} ADVISORY</span>
+              <span className={`text-2xl font-black italic tracking-tighter leading-none ${riskColor} transition-all duration-1000`}>
+                {!hasAskedQuery ? 'SYSTEM STANDBY' : `${riskLevel} ADVISORY`}
+              </span>
               {isInterventionActive && !isProcessing && (
                 <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[9px] font-black text-emerald-400 uppercase tracking-widest animate-fade-in">Mitigation Applied</span>
               )}
