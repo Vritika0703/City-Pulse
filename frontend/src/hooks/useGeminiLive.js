@@ -37,9 +37,34 @@ function processClientData(data, queryStr = "") {
   const mapCenter = BOROUGH_COORDS[topB] || { lat: 40.7128, lon: -74.0060, zoom: 11 };
   const total = (data && data.length) ? data.length : 20;
 
-  // On initial load (no query), provide a balanced baseline score (52/100 MEDIUM ADVISORY)
   const isInitial = !queryStr;
-  const score = isInitial ? 52 : Math.min(92, Math.max(38, Math.round(total * 1.1 + 25)));
+  let score = 52;
+  if (!isInitial) {
+    const issueLower = (primaryIssue + " " + queryStr).toLowerCase();
+    let baseWeight = 58;
+    if (issueLower.includes("heat") || issueLower.includes("boiler") || issueLower.includes("cold")) {
+      baseWeight = 84;
+    } else if (issueLower.includes("water") || issueLower.includes("flood") || issueLower.includes("sewer") || issueLower.includes("leak")) {
+      baseWeight = 79;
+    } else if (issueLower.includes("rodent") || issueLower.includes("rat") || issueLower.includes("pest")) {
+      baseWeight = 74;
+    } else if (issueLower.includes("noise") || issueLower.includes("loud")) {
+      baseWeight = 62;
+    } else if (issueLower.includes("dirty") || issueLower.includes("trash") || issueLower.includes("garbage")) {
+      baseWeight = 66;
+    } else if (issueLower.includes("parking") || issueLower.includes("traffic")) {
+      baseWeight = 48;
+    }
+
+    const seedStr = (topB + primaryIssue + queryStr).toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < seedStr.length; i++) {
+      hash = (hash << 5) - hash + seedStr.charCodeAt(i);
+      hash |= 0;
+    }
+    const variance = (Math.abs(hash) % 15) - 7;
+    score = Math.min(94, Math.max(32, baseWeight + variance));
+  }
 
   const headlines = isInitial ? [
     "NYC INFRASTRUCTURE MONITORING LIVE: 311 SIGNALS EVALUATED ACROSS ALL BOROUGHS",
@@ -171,8 +196,11 @@ export function useGeminiLive() {
   const reconnectTimer = useRef(null);
   const processingTimeout = useRef(null);
   const lastUserQuery = useRef("");
+  const isFetchingFallback = useRef(false);
 
   const fetchLiveNYCDataAndRender = useCallback(async (queryText) => {
+    if (isFetchingFallback.current) return;
+    isFetchingFallback.current = true;
     try {
       let whereClause = "";
       const lower = (queryText || "").toLowerCase();
@@ -236,12 +264,17 @@ export function useGeminiLive() {
 
       setTranscripts(prev => {
         const filtered = prev.filter(t => !t.text.includes("Model not found") && !t.text.includes("Analysis failed"));
+        if (filtered.length > 0 && filtered[filtered.length - 1].text === aiResponse) {
+          return filtered;
+        }
         return [...filtered, { text: aiResponse, ts: Date.now() }];
       });
       setIsProcessing(false);
     } catch (err) {
       console.error("NYC Open Data recovery error", err);
       setIsProcessing(false);
+    } finally {
+      isFetchingFallback.current = false;
     }
   }, []);
 
