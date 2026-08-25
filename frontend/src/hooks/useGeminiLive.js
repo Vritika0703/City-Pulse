@@ -131,6 +131,80 @@ export function useGeminiLive() {
   const recognition = useRef(null);
   const reconnectTimer = useRef(null);
   const processingTimeout = useRef(null);
+  const lastUserQuery = useRef("");
+
+  const fetchLiveNYCDataAndRender = useCallback(async (queryText) => {
+    try {
+      let whereClause = "";
+      const lower = (queryText || "").toLowerCase();
+
+      const boroughs = ["manhattan", "brooklyn", "queens", "bronx", "staten island"];
+      const foundBorough = boroughs.find(b => lower.includes(b));
+
+      const issueKeywords = {
+        "rat": "Rodent", "rodent": "Rodent", "pest": "Rodent",
+        "noise": "Noise", "loud": "Noise",
+        "water": "Water System", "flood": "Water System", "leak": "Water System",
+        "heat": "HEAT/HOT WATER", "boiler": "HEAT/HOT WATER", "cold": "HEAT/HOT WATER",
+        "trash": "Dirty Condition", "garbage": "Dirty Condition", "dirty": "Dirty Condition",
+        "parking": "Illegal Parking", "car": "Illegal Parking",
+        "traffic": "Traffic", "signal": "Traffic"
+      };
+      let foundType = null;
+      for (const [kw, typeVal] of Object.entries(issueKeywords)) {
+        if (lower.includes(kw)) {
+          foundType = typeVal;
+          break;
+        }
+      }
+
+      const conditions = [];
+      if (foundBorough) conditions.push(`upper(borough)='${foundBorough.toUpperCase()}'`);
+      if (foundType) conditions.push(`upper(complaint_type) LIKE '%${foundType.toUpperCase()}%'`);
+
+      if (conditions.length > 0) {
+        whereClause = `&$where=${encodeURIComponent(conditions.join(" AND "))}`;
+      }
+
+      const url = `https://data.cityofnewyork.us/resource/erm2-nwe9.json?$limit=80&$order=created_date DESC${whereClause}`;
+      const res = await fetch(url);
+      let data = await res.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        const fallbackRes = await fetch('https://data.cityofnewyork.us/resource/erm2-nwe9.json?$limit=50&$order=created_date DESC');
+        data = await fallbackRes.json();
+      }
+
+      const newCharts = processClientData(data, queryText);
+      setCharts(newCharts);
+
+      const boroughName = newCharts.top_borough;
+      const issueName = newCharts.primary_issue;
+      const score = newCharts.agents.coordinator.score;
+
+      const aiResponse = `### 🏙️ NYC Urban Infrastructure Intelligence Report\n\n` +
+        `**Analysis Query:** "${queryText || 'NYC Overview'}"\n\n` +
+        `**🚨 OVERALL OPERATIONAL RISK:** ${score}/100\n\n` +
+        `**Key Insights:**\n` +
+        `- **Primary Incident Sector:** **${boroughName}**\n` +
+        `- **Main Stress Vector:** **${issueName}**\n` +
+        `- **Live 311 Data Ingested:** ${data.length} recent signals evaluated\n\n` +
+        `**Multi-Agent Assessment:**\n` +
+        `- **Infrastructure Agent:** ${newCharts.agents.sub[0].reasoning}\n` +
+        `- **Public Health Agent:** ${newCharts.agents.sub[1].reasoning}\n` +
+        `- **Mobility Agent:** ${newCharts.agents.sub[2].reasoning}\n\n` +
+        `*Tactical map and forecast cascade updated with live NYC Open Data.*`;
+
+      setTranscripts(prev => {
+        const filtered = prev.filter(t => !t.text.includes("Model not found") && !t.text.includes("Analysis failed"));
+        return [...filtered, { text: aiResponse, ts: Date.now() }];
+      });
+      setIsProcessing(false);
+    } catch (err) {
+      console.error("NYC Open Data recovery error", err);
+      setIsProcessing(false);
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) return;
@@ -157,24 +231,31 @@ export function useGeminiLive() {
             setIsProcessing(false);
             if (processingTimeout.current) clearTimeout(processingTimeout.current);
           } else if (msg.type === 'transcript') {
-            setTranscripts(prev => {
-              const now = Date.now();
-              if (prev.length > 0 && now - prev[prev.length - 1].ts < 2000) {
-                const upd = [...prev];
-                upd[upd.length - 1] = { text: (upd[upd.length - 1].text || '') + msg.text, ts: now };
-                return upd;
-              }
-              return [...prev, { text: msg.text, ts: now }];
-            });
+            const txt = msg.text || '';
+            if (txt.includes("Model not found") || txt.includes("Analysis failed") || txt.includes("Rate limit")) {
+              fetchLiveNYCDataAndRender(lastUserQuery.current);
+            } else {
+              setTranscripts(prev => {
+                const now = Date.now();
+                if (prev.length > 0 && now - prev[prev.length - 1].ts < 2000) {
+                  const upd = [...prev];
+                  upd[upd.length - 1] = { text: (upd[upd.length - 1].text || '') + txt, ts: now };
+                  return upd;
+                }
+                return [...prev, { text: txt, ts: now }];
+              });
+            }
           } else if (msg.type === 'user_transcript') {
             setUserTranscripts(prev => [...prev, { text: msg.text, ts: Date.now() }]);
           } else if (msg.type === 'chart_data') {
             setCharts(msg.payload);
+          } else if (msg.type === 'error') {
+            fetchLiveNYCDataAndRender(lastUserQuery.current);
           }
         } catch (e) { }
       };
     } catch (e) { setStatus('disconnected'); }
-  }, []);
+  }, [fetchLiveNYCDataAndRender]);
 
   useEffect(() => {
     connect();
@@ -203,88 +284,18 @@ export function useGeminiLive() {
 
   const sendText = useCallback(async (text) => {
     const userMsgTs = Date.now();
+    lastUserQuery.current = text;
     setUserTranscripts(prev => [...prev, { text, ts: userMsgTs }]);
     setIsProcessing(true);
 
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: 'text', text }));
-      setCharts(null);
       if (processingTimeout.current) clearTimeout(processingTimeout.current);
       processingTimeout.current = setTimeout(() => setIsProcessing(false), 90000);
     } else {
-      // Client-side fallback mode fetching live NYC 311 Open Data directly
-      try {
-        let whereClause = "";
-        const lower = text.toLowerCase();
-
-        const boroughs = ["manhattan", "brooklyn", "queens", "bronx", "staten island"];
-        const foundBorough = boroughs.find(b => lower.includes(b));
-
-        const issueKeywords = {
-          "rat": "Rodent", "rodent": "Rodent", "pest": "Rodent",
-          "noise": "Noise", "loud": "Noise",
-          "water": "Water System", "flood": "Water System", "leak": "Water System",
-          "heat": "HEAT/HOT WATER", "boiler": "HEAT/HOT WATER", "cold": "HEAT/HOT WATER",
-          "trash": "Dirty Condition", "garbage": "Dirty Condition", "dirty": "Dirty Condition",
-          "parking": "Illegal Parking", "car": "Illegal Parking",
-          "traffic": "Traffic", "signal": "Traffic"
-        };
-        let foundType = null;
-        for (const [kw, typeVal] of Object.entries(issueKeywords)) {
-          if (lower.includes(kw)) {
-            foundType = typeVal;
-            break;
-          }
-        }
-
-        const conditions = [];
-        if (foundBorough) conditions.push(`upper(borough)='${foundBorough.toUpperCase()}'`);
-        if (foundType) conditions.push(`upper(complaint_type) LIKE '%${foundType.toUpperCase()}%'`);
-
-        if (conditions.length > 0) {
-          whereClause = `&$where=${encodeURIComponent(conditions.join(" AND "))}`;
-        }
-
-        const url = `https://data.cityofnewyork.us/resource/erm2-nwe9.json?$limit=80&$order=created_date DESC${whereClause}`;
-        const res = await fetch(url);
-        let data = await res.json();
-
-        if (!Array.isArray(data) || data.length === 0) {
-          const fallbackRes = await fetch('https://data.cityofnewyork.us/resource/erm2-nwe9.json?$limit=50&$order=created_date DESC');
-          data = await fallbackRes.json();
-        }
-
-        const newCharts = processClientData(data, text);
-        setCharts(newCharts);
-
-        const boroughName = newCharts.top_borough;
-        const issueName = newCharts.primary_issue;
-        const score = newCharts.agents.coordinator.score;
-
-        const aiResponse = `### 🏙️ NYC Urban Infrastructure Intelligence Report\n\n` +
-          `**Analysis Query:** "${text}"\n\n` +
-          `**🚨 OVERALL OPERATIONAL RISK:** ${score}/100\n\n` +
-          `**Key Insights:**\n` +
-          `- **Primary Incident Sector:** **${boroughName}**\n` +
-          `- **Main Stress Vector:** **${issueName}**\n` +
-          `- **Live 311 Data Ingested:** ${data.length} recent signals evaluated\n\n` +
-          `**Multi-Agent Assessment:**\n` +
-          `- **Infrastructure Agent:** ${newCharts.agents.sub[0].reasoning}\n` +
-          `- **Public Health Agent:** ${newCharts.agents.sub[1].reasoning}\n` +
-          `- **Mobility Agent:** ${newCharts.agents.sub[2].reasoning}\n\n` +
-          `*Tactical map and forecast cascade updated with live NYC Open Data.*`;
-
-        setTimeout(() => {
-          setTranscripts(prev => [...prev, { text: aiResponse, ts: Date.now() }]);
-          setIsProcessing(false);
-        }, 1200);
-
-      } catch (err) {
-        console.error("Client processing error", err);
-        setIsProcessing(false);
-      }
+      fetchLiveNYCDataAndRender(text);
     }
-  }, []);
+  }, [fetchLiveNYCDataAndRender]);
 
   const startRecording = async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
