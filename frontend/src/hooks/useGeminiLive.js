@@ -35,8 +35,75 @@ function processClientData(data, queryStr = "") {
   }));
 
   const mapCenter = BOROUGH_COORDS[topB] || { lat: 40.7128, lon: -74.0060, zoom: 11 };
-  const total = (data && data.length) ? data.length : 45;
-  const score = Math.min(95, Math.max(35, Math.round(total * 1.5 + 30)));
+  const total = (data && data.length) ? data.length : 20;
+
+  // On initial load (no query), provide a balanced baseline score (52/100 MEDIUM ADVISORY)
+  const isInitial = !queryStr;
+  const score = isInitial ? 52 : Math.min(92, Math.max(38, Math.round(total * 1.1 + 25)));
+
+  const headlines = isInitial ? [
+    "NYC INFRASTRUCTURE MONITORING LIVE: 311 SIGNALS EVALUATED ACROSS ALL BOROUGHS",
+    "CITYWIDE OPERATIONAL STATUS: MEDIUM ADVISORY — BASELINE STRESS MONITORED",
+    "TACTICAL INTERVENTION ENGINE READY FOR SECTOR DEPLOYMENT"
+  ] : [
+    `${topB} ${primaryIssue.toUpperCase()} SURGE: ${total} LIVE 311 SIGNALS ANALYZED`,
+    `URBAN STRESS ESCALATING IN ${topB} — CROSS-DOMAIN CASCADE AT MEDIUM RISK`,
+    `NYC COORDINATOR AGENT ACTIVATED TACTICAL RESPONSE FOR ${topB}`
+  ];
+
+  const cascade = isInitial ? [
+    {
+      title: "⚡ Baseline Citywide Monitoring Active",
+      time: "0-2 Hours",
+      points: [
+        "Live 311 signal feeds active across all 5 NYC boroughs.",
+        "System operational posture: 52/100 (MEDIUM ADVISORY baseline).",
+        "Multi-Agent intelligence deck ready for sector queries."
+      ]
+    },
+    {
+      title: "🚗 Mobility & Access Monitoring",
+      time: "2-6 Hours",
+      points: [
+        "Transit corridors monitored by DOT algorithmic agent.",
+        "Emergency response corridors operating within normal parameters."
+      ]
+    },
+    {
+      title: "🏥 Public Health Sentinel",
+      time: "6-12 Hours",
+      points: [
+        "Environmental health sentinel tracking 311 complaint clusters.",
+        "Intervention simulator ready for action dispatch."
+      ]
+    }
+  ] : [
+    {
+      title: `⚡ ${primaryIssue} Cluster Detected`,
+      time: "0-2 Hours",
+      points: [
+        `${total} active 311 signals logged across ${topB}.`,
+        `Primary infrastructure vector: ${primaryIssue}.`,
+        `Calculated overall risk score: ${score}/100.`
+      ]
+    },
+    {
+      title: `🚗 Mobility & Access Response`,
+      time: "2-6 Hours",
+      points: [
+        `Transit corridors in ${topB} monitored by DOT algorithms.`,
+        `Rerouting protocols staged for emergency vehicles.`
+      ]
+    },
+    {
+      title: `🏥 Health & Sector Mitigation`,
+      time: "6-12 Hours",
+      points: [
+        `Environmental health advisory active for ${topB} sectors.`,
+        `Pre-emptive crew staging initiated.`
+      ]
+    }
+  ];
 
   return {
     top_borough: topB,
@@ -53,42 +120,14 @@ function processClientData(data, queryStr = "") {
       { lat: 40.8448, lon: -73.8648, type: "Rodent" },
       { lat: 40.6501, lon: -73.9496, type: "HEAT/HOT WATER" }
     ],
-    headlines: [
-      `${topB} ${primaryIssue.toUpperCase()} SURGE: ${total} LIVE 311 SIGNALS ANALYZED`,
-      `URBAN STRESS ESCALATING IN ${topB} — CROSS-DOMAIN CASCADE AT MEDIUM RISK`,
-      `NYC COORDINATOR AGENT ACTIVATED TACTICAL RESPONSE FOR ${topB}`
-    ],
-    cascade: [
-      {
-        title: `⚡ ${primaryIssue} Cluster Detected`,
-        time: "0-2 Hours",
-        points: [
-          `${total} active 311 signals logged across ${topB}.`,
-          `Primary infrastructure vector: ${primaryIssue}.`,
-          `Calculated overall risk score: ${score}/100.`
-        ]
-      },
-      {
-        title: `🚗 Mobility & Access Response`,
-        time: "2-6 Hours",
-        points: [
-          `Transit corridors in ${topB} monitored by DOT algorithms.`,
-          `Rerouting protocols staged for emergency vehicles.`
-        ]
-      },
-      {
-        title: `🏥 Health & Sector Mitigation`,
-        time: "6-12 Hours",
-        points: [
-          `Environmental health advisory active for ${topB} sectors.`,
-          `Pre-emptive crew staging initiated.`
-        ]
-      }
-    ],
+    headlines,
+    cascade,
     agents: {
       coordinator: {
         score: score,
-        decision: `Multi-agent synthesis complete for ${topB}. Analyzed ${total} live 311 complaints. Infrastructure risk score calculated at ${score}/100.`
+        decision: isInitial 
+          ? "Baseline citywide monitoring active across NYC. Operational score: 52/100." 
+          : `Multi-agent synthesis complete for ${topB}. Analyzed ${total} live 311 complaints. Risk score: ${score}/100.`
       },
       sub: [
         {
@@ -96,21 +135,21 @@ function processClientData(data, queryStr = "") {
           icon: "👷",
           level: score > 70 ? 'HIGH' : score > 40 ? 'MEDIUM' : 'LOW',
           score: score,
-          reasoning: `${primaryIssue} complaint density elevated in ${topB} sector.`
+          reasoning: isInitial ? "Baseline infrastructure complaint density within normal thresholds." : `${primaryIssue} complaint density elevated in ${topB} sector.`
         },
         {
           name: "Public Health Agent",
           icon: "⚕️",
           level: score > 60 ? 'MEDIUM' : 'LOW',
           score: Math.max(15, score - 12),
-          reasoning: `Environmental health exposure monitored across ${topB} sectors.`
+          reasoning: isInitial ? "Environmental health signals operating at baseline level." : `Environmental health exposure monitored across ${topB} sectors.`
         },
         {
           name: "Mobility Agent",
           icon: "🚦",
           level: "LOW",
           score: Math.max(10, score - 25),
-          reasoning: `Traffic corridors operating within standard thresholds.`
+          reasoning: "Traffic corridors operating within standard thresholds."
         }
       ]
     }
