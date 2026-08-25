@@ -662,11 +662,11 @@ function CityPulseApp() {
                     <div className="flex items-end gap-3 mb-3">
                       <span className="text-4xl font-black text-white leading-none tracking-tighter transition-all duration-1000">{riskScore}</span>
                       <div className="flex flex-col mb-1">
-                        <span className={`text-[10px] font-black uppercase transition-colors duration-1000 ${isInterventionActive ? 'text-emerald-500' : (riskScore > 70 ? 'text-red-500' : 'text-blue-400')}`}>
-                          {riskLevel} RISK POSTURE
+                        <span className={`text-[10px] font-black uppercase transition-colors duration-1000 ${isInterventionActive ? 'text-emerald-500' : (typeof riskScore === 'number' && riskScore > 70 ? 'text-red-500' : 'text-blue-400')}`}>
+                          {hasAskedQuery ? `${riskLevel} RISK POSTURE` : 'AWAITING QUERY'}
                         </span>
                         <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden mt-1">
-                          <div className={`h-full transition-all duration-1000 ${isInterventionActive ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${riskScore}%` }} />
+                          <div className={`h-full transition-all duration-1000 ${isInterventionActive ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${typeof riskScore === 'number' ? riskScore : 0}%` }} />
                         </div>
                       </div>
                     </div>
@@ -674,12 +674,12 @@ function CityPulseApp() {
                       <div className="border-t border-emerald-500/20 pt-3 flex flex-col gap-1">
                         <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">IMPACT OF INTERVENTION</span>
                         <p className="text-[10px] text-emerald-100/80 font-medium leading-relaxed italic">
-                          "{coordinatorDecision}"
+                          &ldquo;{coordinatorDecision}&rdquo;
                         </p>
                       </div>
                     ) : (
                       <p className="text-[10px] text-blue-100/70 font-medium leading-relaxed border-t border-blue-500/20 pt-3 italic">
-                        "{coordinatorDecision}"
+                        &ldquo;{coordinatorDecision}&rdquo;
                       </p>
                     )}
                   </div>

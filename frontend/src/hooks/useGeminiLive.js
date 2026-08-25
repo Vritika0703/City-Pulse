@@ -365,18 +365,24 @@ export function useGeminiLive() {
     lastUserQuery.current = text;
     setIsProcessing(true);
 
+    // Always add user message immediately so bubble shows right away
+    setUserTranscripts(prev => {
+      if (prev.some(t => t.text === text && Math.abs(userMsgTs - t.ts) < 5000)) return prev;
+      return [...prev, { text, ts: userMsgTs }];
+    });
+
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: 'text', text }));
       if (processingTimeout.current) clearTimeout(processingTimeout.current);
-      processingTimeout.current = setTimeout(() => setIsProcessing(false), 90000);
+      // 10s timeout: if WS doesn't respond, fall back to client-side
+      processingTimeout.current = setTimeout(() => {
+        fetchLiveNYCDataAndRender(lastUserQuery.current);
+      }, 10000);
     } else {
-      setUserTranscripts(prev => {
-        if (prev.some(t => t.text === text && Math.abs(userMsgTs - t.ts) < 5000)) return prev;
-        return [...prev, { text, ts: userMsgTs }];
-      });
       fetchLiveNYCDataAndRender(text);
     }
   }, [fetchLiveNYCDataAndRender]);
+
 
   const startRecording = async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
