@@ -518,28 +518,32 @@ function CityPulseApp() {
                 {charts && charts.cascade && !isProcessing ? (
                   <div className="flex flex-col gap-8 relative">
                     <div className={`absolute left-[13px] top-2 bottom-2 w-0.5 transition-all duration-1000 ${isInterventionActive ? 'bg-gradient-to-b from-emerald-500 to-blue-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-gradient-to-b from-yellow-500 via-orange-500 to-red-600 shadow-[0_0_10px_rgba(255,165,0,0.5)] opacity-30'}`} />
-                    {cascade.map((step, idx) => (
-                      <div key={idx} className="flex gap-5 relative animate-fade-in group" style={{ animationDelay: `${idx * 200}ms` }}>
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 shadow-2xl border border-white/10 transition-colors duration-1000 group-hover:scale-110 ${isInterventionActive ? 'bg-emerald-500 text-white shadow-emerald-500/20' : (idx === 0 ? 'bg-yellow-500 text-black shadow-yellow-500/20' : idx === 1 ? 'bg-orange-500 text-black shadow-orange-500/20' : 'bg-red-600 text-white shadow-red-600/20')
-                          }`}>
-                          <span className="text-xs">{isInterventionActive && currentIntervention ? currentIntervention.icon : (idx === 0 ? '⚡' : idx === 1 ? '🚗' : '🏥')}</span>
-                        </div>
-                        <div className="flex-1 pt-0.5">
-                          <div className="flex justify-between items-center mb-1.5">
-                            <h4 className="text-[11px] font-black text-white uppercase tracking-tight">{step.title}</h4>
-                            <span className="text-[9px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded border border-white/5">{step.time}</span>
+                    {cascade.map((step, idx) => {
+                      // Dynamically extract emoji from step title, fallback to defaults
+                      const emojiMatch = step.title.match(/^(\p{Emoji})/u);
+                      const stepIcon = emojiMatch ? emojiMatch[1] : (idx === 0 ? '⚡' : idx === 1 ? '🚗' : '🏥');
+                      return (
+                        <div key={idx} className="flex gap-5 relative animate-fade-in group" style={{ animationDelay: `${idx * 200}ms` }}>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 shadow-2xl border border-white/10 transition-colors duration-1000 group-hover:scale-110 ${isInterventionActive ? 'bg-emerald-500 text-white shadow-emerald-500/20' : (idx === 0 ? 'bg-yellow-500 text-black shadow-yellow-500/20' : idx === 1 ? 'bg-orange-500 text-black shadow-orange-500/20' : 'bg-red-600 text-white shadow-red-600/20')}`}>
+                            <span className="text-xs">{isInterventionActive && currentIntervention ? currentIntervention.icon : stepIcon}</span>
                           </div>
-                          <ul className="space-y-1.5">
-                            {step.points.map((p, pi) => (
-                              <li key={pi} className="text-[10px] text-gray-400 leading-tight flex items-start gap-2">
-                                <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${isInterventionActive ? 'bg-emerald-500' : 'bg-gray-600'}`} />
-                                <span>{p}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          <div className="flex-1 pt-0.5">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <h4 className="text-[11px] font-black text-white uppercase tracking-tight">{step.title.replace(/^\p{Emoji}\s*/u, '')}</h4>
+                              <span className="text-[9px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded border border-white/5">{step.time}</span>
+                            </div>
+                            <ul className="space-y-1.5">
+                              {step.points.map((p, pi) => (
+                                <li key={pi} className="text-[10px] text-gray-400 leading-tight flex items-start gap-2">
+                                  <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${isInterventionActive ? 'bg-emerald-500' : 'bg-gray-600'}`} />
+                                  <span>{p}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : <div className="h-full flex flex-col items-center justify-center italic text-blue-400/70 text-[10px] uppercase font-black tracking-widest gap-3 animate-pulse">
                   <RefreshCw size={24} className="animate-spin text-blue-500" />
@@ -558,7 +562,7 @@ function CityPulseApp() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-              {charts && charts.agents && !isProcessing ? (
+              {charts && charts.agents ? (
                 <div className="flex flex-col gap-6">
                   {/* Sub-Agents Grid */}
                   <div className="grid grid-cols-1 gap-3">
@@ -582,30 +586,32 @@ function CityPulseApp() {
                               <span className="text-base">{agent.icon}</span>
                               <div className="flex flex-col">
                                 <span className="text-[10px] font-black text-gray-200 uppercase tracking-tight">{agent.name}</span>
-                                <span className={`text-[8px] font-black uppercase tracking-widest ${scoreColor}`}>{agent.level} RISK</span>
+                                <span className={`text-[8px] font-black uppercase tracking-widest ${hasAskedQuery ? scoreColor : 'text-gray-500'}`}>
+                                  {hasAskedQuery ? `${agent.level} RISK` : 'STANDBY'}
+                                </span>
                               </div>
                             </div>
                             <div className="flex flex-col items-end">
-                              <span className={`text-sm font-black transition-colors duration-1000 ${scoreColor}`}>
-                                {finalAgentScore}
+                              <span className={`text-sm font-black transition-colors duration-1000 ${hasAskedQuery ? scoreColor : 'text-gray-500'}`}>
+                                {hasAskedQuery ? finalAgentScore : '--'}
                               </span>
                               <span className="text-[8px] font-bold text-gray-600 uppercase">/ 100</span>
                             </div>
                           </div>
                           {/* Risk bar */}
                           <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-2">
-                            <div className={`h-full transition-all duration-1000 ${barColor}`} style={{ width: `${finalAgentScore}%` }} />
+                            <div className={`h-full transition-all duration-1000 ${barColor}`} style={{ width: `${hasAskedQuery ? finalAgentScore : 0}%` }} />
                           </div>
-                          {/* Context reasoning note — intervention-specific if active, otherwise live backend note */}
+                          {/* Context reasoning note */}
                           {(() => {
-                            let note = agent.reasoning;
+                            let note = hasAskedQuery ? agent.reasoning : 'Awaiting first query to activate agent analysis.';
                             if (currentIntervention) {
                               if (agent.name.includes('Infrastructure')) note = currentIntervention.agentInfraNote;
                               else if (agent.name.includes('Health')) note = currentIntervention.agentHealthNote;
                               else if (agent.name.includes('Mobility')) note = currentIntervention.agentMobilityNote;
                             }
                             return note ? (
-                              <p className={`text-[9px] leading-relaxed pl-1 border-l border-white/5 transition-colors duration-500 ${currentIntervention ? 'text-emerald-400/70' : 'text-gray-500'}`}>
+                              <p className={`text-[9px] leading-relaxed pl-1 border-l border-white/5 transition-colors duration-500 ${currentIntervention ? 'text-emerald-400/70' : hasAskedQuery ? 'text-gray-500' : 'text-gray-600/60 italic'}`}>
                                 {currentIntervention && <span className="font-black text-emerald-400 mr-1">[{activeIntervention.toUpperCase()}]</span>}
                                 {note}
                               </p>
@@ -635,14 +641,14 @@ function CityPulseApp() {
                         const score = isInterventionActive ? Math.max(10, a.score - specificReduction) : a.score;
                         return (
                           <React.Fragment key={i}>
-                            <div className={`w-2 h-2 rounded-full transition-colors duration-1000 ${score > 70 ? 'bg-red-500' : score > 40 ? 'bg-yellow-500' : 'bg-emerald-500'}`} />
+                            <div className={`w-2 h-2 rounded-full transition-colors duration-1000 ${!hasAskedQuery ? 'bg-gray-700' : score > 70 ? 'bg-red-500' : score > 40 ? 'bg-yellow-500' : 'bg-emerald-500'}`} />
                             {i < 2 && <div className="w-4 h-[1px] bg-white/10" />}
                           </React.Fragment>
                         );
                       })}
                       <div className="mx-3 text-blue-500 animate-pulse">→</div>
                       <div className="px-3 py-1 rounded bg-blue-500/20 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Synthesizing</span>
+                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{hasAskedQuery ? 'Synthesizing' : 'Standby'}</span>
                       </div>
                     </div>
                   </div>
