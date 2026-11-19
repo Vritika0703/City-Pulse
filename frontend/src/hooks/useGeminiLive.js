@@ -267,7 +267,7 @@ export function useGeminiLive() {
         if (filtered.length > 0 && filtered[filtered.length - 1].text === aiResponse) {
           return filtered;
         }
-        return [...filtered, { text: aiResponse, ts: Date.now() }];
+        return [...filtered, { text: aiResponse, ts: Date.now(), fallback: true }];
       });
       setIsProcessing(false);
     } catch (err) {
@@ -307,8 +307,14 @@ export function useGeminiLive() {
             if (txt.includes("Model not found") || txt.includes("Analysis failed") || txt.includes("Rate limit")) {
               fetchLiveNYCDataAndRender(lastUserQuery.current);
             } else {
+              if (processingTimeout.current) clearTimeout(processingTimeout.current);
               setTranscripts(prev => {
                 const now = Date.now();
+                const last = prev[prev.length - 1];
+                // A real AI report supersedes a client-side fallback report for the same turn
+                if (last && last.fallback) {
+                  return [...prev.slice(0, -1), { text: txt, ts: now }];
+                }
                 if (prev.length > 0 && now - prev[prev.length - 1].ts < 2000) {
                   const upd = [...prev];
                   upd[upd.length - 1] = { text: (upd[upd.length - 1].text || '') + txt, ts: now };
@@ -374,10 +380,11 @@ export function useGeminiLive() {
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: 'text', text }));
       if (processingTimeout.current) clearTimeout(processingTimeout.current);
-      // 10s timeout: if WS doesn't respond, fall back to client-side
+      // 45s timeout: large 311 pulls + two Groq calls can take 10-20s, so only
+      // fall back to client-side rendering if the backend is truly unresponsive
       processingTimeout.current = setTimeout(() => {
         fetchLiveNYCDataAndRender(lastUserQuery.current);
-      }, 10000);
+      }, 45000);
     } else {
       fetchLiveNYCDataAndRender(text);
     }
