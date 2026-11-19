@@ -8,7 +8,7 @@ from google import genai
 from google.genai import types
 from groq import AsyncGroq
 from app.core.config import get_settings
-from app.tools.nyc_data import fetch_311_data, process_311_trends
+from app.tools.nyc_data import fetch_311_data, trends_with_anomalies
 from app.tools.analysis import detect_anomalies
 from app.services.vector_db import VectorDB
 from fastapi.encoders import jsonable_encoder
@@ -661,8 +661,7 @@ class GeminiLiveService:
                 agents = generate_agents(data, borough_counts)
                 headlines = generate_headlines(data, borough_counts, agents["coordinator"]["score"])
                 cascade = generate_cascade(data, borough_counts)
-                trends = process_311_trends(data)
-                full, anomalies = detect_anomalies(trends)
+                full, anomalies = trends_with_anomalies(data)  # memoized per dataset
                 
                 # Build map locations with proportional sampling per complaint type
                 # so ALL requested incident types are visible, not just the most common one

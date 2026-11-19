@@ -105,6 +105,29 @@ async def fetch_311_data(borough: str = None, complaint_type: str = None, days: 
     return _unpack(packed)
 
 
+# Trend aggregation + IsolationForest anomaly detection depend only on the rows,
+# so results are memoized by a fingerprint of the data. On a free Render instance
+# (~0.1 vCPU) this fitting otherwise costs ~0.5s per query.
+_trend_cache = OrderedDict()
+
+
+def trends_with_anomalies(data: list):
+    from app.tools.analysis import detect_anomalies
+    if not data:
+        return {}, []
+    fp = (len(data), data[0].get("created_date"), data[-1].get("created_date"),
+          data[len(data) // 2].get("created_date"))
+    hit = _trend_cache.get(fp)
+    if hit:
+        _trend_cache.move_to_end(fp)
+        return hit
+    result = detect_anomalies(process_311_trends(data))
+    _trend_cache[fp] = result
+    while len(_trend_cache) > 64:
+        _trend_cache.popitem(last=False)
+    return result
+
+
 # Borough x category combinations behind the suggested questions and the most
 # common queries; kept warm so they answer without waiting on Socrata.
 PREWARM_BOROUGHS = ["BROOKLYN", "QUEENS", "BRONX", "MANHATTAN", "STATEN ISLAND"]
@@ -118,7 +141,8 @@ async def prewarm_cache(days: int = 60, concurrency: int = 4):
         async with sem:
             key = (b.upper(), t.upper(), days)
             _cache.pop(key, None)  # force refresh
-            await fetch_311_data(borough=b, complaint_type=t, days=days)
+            data = await fetch_311_data(borough=b, complaint_type=t, days=days)
+            trends_with_anomalies(data)  # precompute so first queries skip model fitting
 
     t0 = time.perf_counter()
     await asyncio.gather(*(one(b, t) for t in PREWARM_TYPES for b in PREWARM_BOROUGHS),
