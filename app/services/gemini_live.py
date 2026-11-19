@@ -71,6 +71,7 @@ class GeminiLiveService:
     async def stream(self, ws):
         active_user_query = [""]   # mutable container to share query text across closures
         computed_scores   = [{}]   # stores {coord, infra, health, mobility} after each tool call
+        background_tasks  = set()  # holds fast-path analysis tasks so they aren't GC'd mid-flight
         logger.info("Chat Session Started (Replacing Live API for Stability)")
         
         async def get_311_stats(borough: str = None, complaint_type: str = None):
@@ -819,6 +820,19 @@ class GeminiLiveService:
                             # Fresh context window for every turn to guarantee stable tool calling
                             turn_messages = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
                             turn_messages.append({"role": "user", "content": user_text})
+
+                            # Fast path: when the borough is named in the question, start the
+                            # 311 analysis in parallel with the LLM's tool-selection call. On a
+                            # cache hit the dashboard (map, agents, cascade, headlines) renders
+                            # in well under a second; the LLM's identical tool call then reuses
+                            # the same cached/in-flight download.
+                            q_lower = user_text.lower()
+                            fast_borough = next((b for b in ("STATEN ISLAND", "MANHATTAN", "BROOKLYN", "QUEENS", "BRONX")
+                                                 if b.lower() in q_lower), None)
+                            if fast_borough:
+                                fast_task = asyncio.create_task(get_311_stats(borough=fast_borough))
+                                background_tasks.add(fast_task)
+                                fast_task.add_done_callback(background_tasks.discard)
 
                             try:
                                 response = await self.groq.chat.completions.create(

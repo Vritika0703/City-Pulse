@@ -190,6 +190,9 @@ export function useGeminiLive() {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  // True once this turn's 311 analysis has arrived; lets the dashboard render
+  // before the LLM's written report finishes
+  const [dataReady, setDataReady] = useState(false);
 
   const ws = useRef(null);
   const recognition = useRef(null);
@@ -333,6 +336,7 @@ export function useGeminiLive() {
             });
           } else if (msg.type === 'chart_data') {
             setCharts(msg.payload);
+            setDataReady(true);
           } else if (msg.type === 'error') {
             fetchLiveNYCDataAndRender(lastUserQuery.current);
           }
@@ -370,6 +374,7 @@ export function useGeminiLive() {
     const userMsgTs = Date.now();
     lastUserQuery.current = text;
     setIsProcessing(true);
+    setDataReady(false);
 
     // Always add user message immediately so bubble shows right away
     setUserTranscripts(prev => {
@@ -421,6 +426,8 @@ export function useGeminiLive() {
     setIsProcessing(false);
   };
 
-  return { status, transcripts, userTranscripts, charts, feed, isRecording, error, isProcessing, sendText, startRecording, stopRecording, clearHistory };
+  const isAnalyzing = isProcessing && !dataReady;
+
+  return { status, transcripts, userTranscripts, charts, feed, isRecording, error, isProcessing, isAnalyzing, sendText, startRecording, stopRecording, clearHistory };
 }
 

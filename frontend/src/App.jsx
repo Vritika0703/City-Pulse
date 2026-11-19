@@ -24,7 +24,7 @@ class ErrorBoundary extends Component {
 }
 
 function CityPulseApp() {
-  const { status, transcripts, userTranscripts, charts, isRecording, isProcessing, sendText, startRecording, stopRecording, clearHistory } = useGeminiLive();
+  const { status, transcripts, userTranscripts, charts, isRecording, isProcessing, isAnalyzing, sendText, startRecording, stopRecording, clearHistory } = useGeminiLive();
   const scrollRef = useRef(null);
   const [activeIntervention, setActiveIntervention] = useState(null);
 
@@ -270,11 +270,11 @@ function CityPulseApp() {
   const originalRiskScore = charts?.agents?.coordinator?.score || 67;
 
   const riskReduction = currentIntervention ? currentIntervention.riskReduction : 0;
-  const riskScore = !hasAskedQuery ? "--" : isProcessing ? "--" : Math.max(12, originalRiskScore - riskReduction);
+  const riskScore = !hasAskedQuery ? "--" : isAnalyzing ? "--" : Math.max(12, originalRiskScore - riskReduction);
 
-  const riskLevel = !hasAskedQuery ? "STANDBY" : isProcessing ? "ANALYZING" : (riskScore > 70 ? 'HIGH' : riskScore > 40 ? 'MEDIUM' : 'LOW');
-  const riskColor = !hasAskedQuery ? "text-gray-400" : isProcessing ? "text-blue-500" : (riskScore > 70 ? 'text-red-500' : riskScore > 40 ? 'text-yellow-500' : 'text-emerald-500');
-  const riskBg = !hasAskedQuery ? "bg-white/5 border-white/10" : isProcessing ? "bg-blue-500/10 border-blue-500/20" : (riskScore > 70 ? 'bg-red-500/10 border-red-500/20' : riskScore > 40 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-emerald-500/10 border-emerald-500/20');
+  const riskLevel = !hasAskedQuery ? "STANDBY" : isAnalyzing ? "ANALYZING" : (riskScore > 70 ? 'HIGH' : riskScore > 40 ? 'MEDIUM' : 'LOW');
+  const riskColor = !hasAskedQuery ? "text-gray-400" : isAnalyzing ? "text-blue-500" : (riskScore > 70 ? 'text-red-500' : riskScore > 40 ? 'text-yellow-500' : 'text-emerald-500');
+  const riskBg = !hasAskedQuery ? "bg-white/5 border-white/10" : isAnalyzing ? "bg-blue-500/10 border-blue-500/20" : (riskScore > 70 ? 'bg-red-500/10 border-red-500/20' : riskScore > 40 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-emerald-500/10 border-emerald-500/20');
 
   // When intervention is active: use intervention cascade/headlines (already context-aware via template literals)
   // For agents: use REAL scores from backend but apply intervention reduction per domain
@@ -302,7 +302,7 @@ function CityPulseApp() {
               <span className={`text-2xl font-black italic tracking-tighter leading-none ${riskColor} transition-all duration-1000`}>
                 {!hasAskedQuery ? 'SYSTEM STANDBY' : `${riskLevel} ADVISORY`}
               </span>
-              {isInterventionActive && !isProcessing && (
+              {isInterventionActive && !isAnalyzing && (
                 <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-[9px] font-black text-emerald-400 uppercase tracking-widest animate-fade-in">Mitigation Applied</span>
               )}
             </div>
@@ -313,7 +313,7 @@ function CityPulseApp() {
           <div className="flex flex-col items-end">
             <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Operational Score</span>
             <div className="flex items-center gap-4">
-              {isInterventionActive && !isProcessing && (
+              {isInterventionActive && !isAnalyzing && (
                 <div className="flex flex-col items-end animate-fade-in pr-4 border-r border-white/10">
                   <span className="text-[9px] text-gray-500 font-bold uppercase">📉 Without Intervention: {originalRiskScore}</span>
                   <span className="text-[9px] text-emerald-400 font-bold uppercase">📈 With Intervention: {riskScore}</span>
@@ -443,7 +443,7 @@ function CityPulseApp() {
         {/* CENTER: TACTICAL VISUALIZATION & ACTIONS */}
         <div className="flex-1 flex flex-col gap-4 min-h-0">
           <div className="flex-[1.5] glass-card rounded-2xl border border-white/10 overflow-hidden relative shadow-2xl group">
-            {isProcessing ? (
+            {isAnalyzing ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-20">
                 <Globe size={48} className="text-blue-500 mb-4 animate-spin-slow" />
                 <span className="text-[12px] font-black text-blue-400 uppercase tracking-widest animate-pulse">{activeLoadingMessage}</span>
@@ -461,7 +461,7 @@ function CityPulseApp() {
               </div>
             </div>
             {/* Top Borough Overlay */}
-            {charts?.borough_counts && !isProcessing && (
+            {charts?.borough_counts && !isAnalyzing && (
               <div className="absolute top-4 right-4 z-30">
                 <div className="px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
                   <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest block mb-1">Max Intensity Sector</span>
@@ -487,7 +487,7 @@ function CityPulseApp() {
               ].map((action, idx) => (
                 <button
                   key={idx}
-                  disabled={isProcessing}
+                  disabled={isAnalyzing}
                   onClick={() => handleIntervention(action.name)}
                   className={`px-3 py-3 rounded-xl border text-[10px] font-black uppercase tracking-tight flex items-center justify-center gap-2 transition-all duration-300 ${activeIntervention === action.name
                     ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] transform scale-105'
@@ -515,7 +515,7 @@ function CityPulseApp() {
             </div>
             <div className="flex-1 min-h-0 p-5 overflow-y-auto custom-scrollbar relative">
               <div className={`transition-opacity duration-500 ${isInterventionActive ? 'opacity-100' : 'opacity-100'}`}>
-                {charts && charts.cascade && !isProcessing ? (
+                {charts && charts.cascade && !isAnalyzing ? (
                   <div className="flex flex-col gap-8 relative">
                     <div className={`absolute left-[13px] top-2 bottom-2 w-0.5 transition-all duration-1000 ${isInterventionActive ? 'bg-gradient-to-b from-emerald-500 to-blue-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-gradient-to-b from-yellow-500 via-orange-500 to-red-600 shadow-[0_0_10px_rgba(255,165,0,0.5)] opacity-30'}`} />
                     {cascade.map((step, idx) => {
@@ -547,7 +547,7 @@ function CityPulseApp() {
                   </div>
                 ) : <div className="h-full flex flex-col items-center justify-center italic text-blue-400/70 text-[10px] uppercase font-black tracking-widest gap-3 animate-pulse">
                   <RefreshCw size={24} className="animate-spin text-blue-500" />
-                  {isProcessing ? activeLoadingMessage : "Establishing Baseline..."}
+                  {isAnalyzing ? activeLoadingMessage : "Establishing Baseline..."}
                 </div>}
               </div>
             </div>
@@ -692,7 +692,7 @@ function CityPulseApp() {
                 </div>
               ) : <div className="h-full flex flex-col items-center justify-center italic text-blue-400/70 text-[10px] uppercase font-black tracking-widest gap-3 animate-pulse">
                 <Layers size={24} className="animate-pulse text-blue-500" />
-                {isProcessing ? activeLoadingMessage : "Establishing Baseline..."}
+                {isAnalyzing ? activeLoadingMessage : "Establishing Baseline..."}
               </div>}
             </div>
           </div>
@@ -701,7 +701,7 @@ function CityPulseApp() {
 
       {/* BOTTOM FOOTER: PREDICTIVE HEADLINES TICKER */}
       <footer className="h-28 shrink-0 flex gap-4 mt-4">
-        {charts && charts.headlines && !isProcessing ? headlines.map((h, i) => (
+        {charts && charts.headlines && !isAnalyzing ? headlines.map((h, i) => (
           <div key={i} className={`flex-1 glass-card rounded-2xl border p-5 flex flex-col justify-center animate-fade-in relative group transition-all duration-500 bg-gradient-to-br from-white/2 to-transparent ${isInterventionActive ? 'border-emerald-500/20 hover:border-emerald-500/40' : 'border-white/5 hover:border-blue-500/30'}`} style={{ animationDelay: `${i * 300}ms` }}>
             <div className={`absolute top-0 left-0 w-full h-[3px] opacity-0 group-hover:opacity-100 transition-opacity ${isInterventionActive ? 'bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-500/40 to-transparent'}`} />
             <div className="flex items-center gap-3 mb-2">
@@ -715,7 +715,7 @@ function CityPulseApp() {
         )) : (
           <div className="w-full flex items-center justify-center glass-card rounded-2xl border border-white/5 italic text-blue-400/70 text-[11px] uppercase tracking-[0.5em] font-black gap-4 animate-pulse">
             <RefreshCw size={16} className="animate-spin text-blue-500" />
-            {isProcessing ? activeLoadingMessage : "Generating Predictive Narrative Pulse..."}
+            {isAnalyzing ? activeLoadingMessage : "Generating Predictive Narrative Pulse..."}
           </div>
         )}
       </footer>
