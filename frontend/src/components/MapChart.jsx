@@ -63,12 +63,15 @@ export default function MapChart({ locations, mapCenter }) {
       });
       // Esri Dark Gray Canvas: keyless dark basemap (CARTO tiles now require an API key)
       const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas';
+      // Darkened base + faded labels to match the original near-black CARTO look
       L.tileLayer(`${ESRI}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, {
         attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
         maxZoom: 16,
+        className: 'cp-basemap',
       }).addTo(mapRef.current);
       L.tileLayer(`${ESRI}/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, {
         maxZoom: 16,
+        opacity: 0.4,
       }).addTo(mapRef.current);
       markersLayerRef.current = L.layerGroup().addTo(mapRef.current);
     }

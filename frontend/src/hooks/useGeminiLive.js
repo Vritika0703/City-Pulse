@@ -211,7 +211,7 @@ export function useGeminiLive() {
       const issueKeywords = {
         "rat": "Rodent", "rodent": "Rodent", "pest": "Rodent",
         "noise": "Noise", "loud": "Noise",
-        "water": "Water System", "flood": "Water System", "leak": "Water System",
+        "water": "Water Maintenance", "flood": "Sewer", "leak": "Water Maintenance",
         "heat": "HEAT/HOT WATER", "boiler": "HEAT/HOT WATER", "cold": "HEAT/HOT WATER",
         "trash": "Dirty Condition", "garbage": "Dirty Condition", "dirty": "Dirty Condition",
         "parking": "Illegal Parking", "car": "Illegal Parking",

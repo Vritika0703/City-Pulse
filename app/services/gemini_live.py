@@ -60,6 +60,14 @@ class GeminiLiveService:
         self.groq = AsyncGroq(api_key=settings.GROQ_API_KEY)
         self.db = VectorDB()
 
+    @staticmethod
+    def _speed_opts():
+        # GPT-OSS models reason before answering; "low" effort keeps each call
+        # well under a second for this structured-report workload
+        if settings.GROQ_MODEL.startswith("openai/gpt-oss"):
+            return {"extra_body": {"reasoning_effort": "low"}}
+        return {}
+
     async def stream(self, ws):
         active_user_query = [""]   # mutable container to share query text across closures
         computed_scores   = [{}]   # stores {coord, infra, health, mobility} after each tool call
@@ -87,13 +95,13 @@ class GeminiLiveService:
                     'streetlight': 'Street Light Condition',
                     'lamp': 'Street Light Condition',
                     # Water / Flooding
-                    'water': 'Water System',
+                    'water': 'Water Maintenance',
                     'flooding': 'Sewer',
                     'flood': 'Sewer',
-                    'leak': 'Water System',
+                    'leak': 'Water Maintenance',
                     'sewage': 'Sewer',
                     'sewer': 'Sewer',
-                    'pipe': 'Water System',
+                    'pipe': 'Water Maintenance',
                     'drain': 'Sewer',
                     # Weather words are broad — don't force them into Sewer/Water
                     'storm': None,
@@ -222,8 +230,10 @@ class GeminiLiveService:
                 # Map each domain keyword group -> its canonical NYC 311 complaint type
                 DOMAIN_FETCH_MAP = [
                     (['electric', 'electricity', 'power outage', 'lamp'],         'Electrical'),
-                    (['water', 'flooding', 'flood', 'sewage', 'sewer', 'leak',
-                      'pipe', 'drain'],                                            'Water System'),
+                    # NYC renamed 'Water System' -> 'Water Maintenance'; flooding is
+                    # reported under 'Sewer Maintenance' / 'Root/Sewer/Sidewalk Condition'
+                    (['flooding', 'flood', 'sewage', 'sewer', 'drain'],            'Sewer'),
+                    (['water', 'leak', 'pipe'],                                    'Water Maintenance'),
                     (['trash', 'garbage', 'sanitation', 'litter', 'waste',
                       'dump', 'dumping', 'dirty', 'filth'],                        'Dirty Condition'),
                     (['noise', 'loud', 'sound', 'music', 'party'],                 'Noise'),
@@ -455,7 +465,7 @@ class GeminiLiveService:
                         by_type_counts = Counter(d.get('complaint_type', 'Unknown') for d in data)
                         phases = []
                         TYPE_PHASE_LABELS = {
-                            'Water System':     ('💧 Water Infrastructure', 'DEP emergency units querying main pressure & shutoff valves.', 'Pipe failure risk escalating — resident disruption imminent.'),
+                            'Water Maintenance':     ('💧 Water Infrastructure', 'DEP emergency units querying main pressure & shutoff valves.', 'Pipe failure risk escalating — resident disruption imminent.'),
                             'Dirty Condition':  ('🗑️ Sanitation Overload', 'DSNY routes cross-referenced against overflow hotspots.', 'Rodent harborage risk rising — DOHMH cross-notified.'),
                             'Electrical':       ('⚡ Electrical Fault Detection', 'Con Ed fault map queried — outage boundary being drawn.', 'Grid failure cascade may affect adjacent infrastructure.'),
                             'Noise':            ('🔊 Noise Signal Identified', 'DEP inspection units dispatched to decibel hotspot zones.', 'Community stress threshold approaching — enforcement window open.'),
@@ -763,7 +773,7 @@ class GeminiLiveService:
                             },
                             "complaint_type": {
                                 "type": ["string", "null"],
-                                "description": "Specific NYC 311 complaint category like 'Noise', 'Rodent', 'HEAT/HOT WATER', 'Water System', 'Dirty Condition', 'Traffic', 'Illegal Parking', 'Building/Use', 'Graffiti'. IMPORTANT: For broad or vague queries where the user says words like 'climate', 'environment', 'overall', 'situation', 'infrastructure', 'neighborhood', 'quality of life', 'safety', 'health', 'transit', 'subway', or any non-specific concept — OMIT this parameter entirely or set it to null to fetch all complaint types."
+                                "description": "Specific NYC 311 complaint category like 'Noise', 'Rodent', 'HEAT/HOT WATER', 'Water Maintenance', 'Dirty Condition', 'Traffic', 'Illegal Parking', 'Building/Use', 'Graffiti'. IMPORTANT: For broad or vague queries where the user says words like 'climate', 'environment', 'overall', 'situation', 'infrastructure', 'neighborhood', 'quality of life', 'safety', 'health', 'transit', 'subway', or any non-specific concept — OMIT this parameter entirely or set it to null to fetch all complaint types."
                             }
                         }
                     }
@@ -815,7 +825,8 @@ class GeminiLiveService:
                                     model=settings.GROQ_MODEL,
                                     messages=turn_messages,
                                     tools=groq_tools,
-                                    tool_choice="auto"
+                                    tool_choice="auto",
+                                    **self._speed_opts()
                                 )
                                 res_msg = response.choices[0].message
                                 turn_messages.append(res_msg)
@@ -962,7 +973,8 @@ class GeminiLiveService:
                                 )})
                                 final_response = await self.groq.chat.completions.create(
                                     model=settings.GROQ_MODEL,
-                                    messages=turn_messages
+                                    messages=turn_messages,
+                                    **self._speed_opts()
                                 )
                                 res_msg = final_response.choices[0].message
 

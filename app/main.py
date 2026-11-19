@@ -24,6 +24,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def warm_311_cache():
+    # Keep common borough/category pulls cached so queries skip Socrata's 4-6s latency
+    import asyncio
+    from app.tools.nyc_data import prewarm_loop
+    app.state.prewarm_task = asyncio.create_task(prewarm_loop())
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "project": settings.PROJECT_NAME}

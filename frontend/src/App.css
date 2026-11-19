@@ -137,3 +137,8 @@ body {
   background-size: 40px 40px;
   pointer-events: none;
 }
+
+/* Esri Dark Gray base, darkened to the near-black tactical look */
+.cp-basemap {
+  filter: brightness(0.55) contrast(1.15);
+}
