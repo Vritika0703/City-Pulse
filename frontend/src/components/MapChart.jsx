@@ -61,8 +61,14 @@ export default function MapChart({ locations, mapCenter }) {
         zoom: DEFAULT_ZOOM,
         zoomControl: false,
       });
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+      // Esri Dark Gray Canvas: keyless dark basemap (CARTO tiles now require an API key)
+      const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas';
+      L.tileLayer(`${ESRI}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`, {
+        attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
+        maxZoom: 16,
+      }).addTo(mapRef.current);
+      L.tileLayer(`${ESRI}/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, {
+        maxZoom: 16,
       }).addTo(mapRef.current);
       markersLayerRef.current = L.layerGroup().addTo(mapRef.current);
     }
