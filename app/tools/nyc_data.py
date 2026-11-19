@@ -21,7 +21,9 @@ async def fetch_311_data(borough: str = None, complaint_type: str = None, days: 
         query += f" AND complaint_type like '%25{complaint_type}%25'"
     
     url = f"{NYC_311_ENDPOINT}?{query}&$order=created_date DESC&$limit=10000"    
-    async with httpx.AsyncClient() as client:
+    # Large borough pulls (up to 10k rows, ~13 MB) take 7-13s from Socrata;
+    # httpx's 5s default silently turned those into "0 complaints"
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
         try:
             response = await client.get(url)
             response.raise_for_status()
