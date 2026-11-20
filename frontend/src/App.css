@@ -158,7 +158,8 @@ body {
   position: absolute; bottom: 12px; left: 12px; z-index: 1000;
   background: rgba(8, 8, 16, 0.88); backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px;
-  padding: 8px 8px 6px; min-width: 170px; max-width: 210px;
+  padding: 8px 8px 6px; min-width: 170px; max-width: 220px;
+  max-height: calc(100% - 90px); overflow-y: auto; scrollbar-width: thin;
 }
 .cp-legend-title {
   font-size: 8px; font-weight: 900; letter-spacing: 0.15em; color: #64748b;
@@ -173,7 +174,10 @@ body {
 .cp-legend-row.off { opacity: 0.35; }
 .cp-legend-row.off .cp-legend-label { text-decoration: line-through; }
 .cp-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.cp-legend-label { flex: 1; font-size: 9px; font-weight: 600; color: #cbd5e1; line-height: 1.2; }
+.cp-legend-label {
+  flex: 1; min-width: 0; font-size: 9px; font-weight: 600; color: #cbd5e1; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .cp-legend-count { font-size: 9px; font-weight: 800; color: #94a3b8; font-variant-numeric: tabular-nums; }
 .cp-legend-foot {
   margin: 5px 4px 0; padding-top: 5px; border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -236,9 +240,10 @@ body {
 }
 .leaflet-marker-icon.cp-noevents { pointer-events: none !important; }
 .cp-hotspot-label {
-  display: inline-block; white-space: nowrap; padding: 2px 7px; border-radius: 999px;
-  background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(248, 113, 113, 0.5);
-  color: #fecaca; font-size: 8px; font-weight: 900; letter-spacing: 0.12em;
+  display: inline-block; white-space: nowrap; padding: 3px 8px; border-radius: 999px;
+  background: rgba(24, 6, 8, 0.94); border: 1px solid rgba(248, 113, 113, 0.75);
+  color: #fee2e2; font-size: 8px; font-weight: 900; letter-spacing: 0.12em;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15), 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 @media (prefers-reduced-motion: reduce) {
   .cp-pulse { animation: none; opacity: 0.6; }

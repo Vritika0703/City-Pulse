@@ -228,6 +228,8 @@ class GeminiLiveService:
 
                 # --- Multi-topic detection: fetch each requested domain separately then merge ---
                 q_words = active_user_query[0].lower() if active_user_query[0] else ''
+                # 'hot water' is a heating complaint (HEAT/HOT WATER), not water infrastructure
+                q_words = q_words.replace('hot water', 'heat')
                 # Map each domain keyword group -> its canonical NYC 311 complaint type
                 DOMAIN_FETCH_MAP = [
                     (['electric', 'electricity', 'power outage', 'lamp'],         'Electrical'),
@@ -312,9 +314,10 @@ class GeminiLiveService:
                 primary_issue = top_types_raw[0] if top_types_raw else (complaint_type or "Urban Stress")
 
                 # --- Query domain detection ---
-                q = active_user_query[0].lower()
+                q = active_user_query[0].lower().replace('hot water', 'heat')
+                # NYC's 'HEAT/HOT WATER' category contains the word 'water'; keep it out of the water domain
                 is_water    = any(x in q for x in ['water', 'flooding', 'flood', 'sewage', 'plumbing', 'leak']) or \
-                              any(x in t for t in top_types_lower for x in ['water', 'sewer', 'flood'])
+                              any(x in t for t in top_types_lower if 'heat' not in t for x in ['water', 'sewer', 'flood'])
                 is_trash    = any(x in q for x in ['trash', 'garbage', 'sanitation', 'waste', 'litter', 'collection']) or \
                               any(x in t for t in top_types_lower for x in ['sanit', 'garbage', 'trash', 'litter', 'dirty'])
                 is_noise    = any(x in q for x in ['noise', 'loud', 'sound', 'music', 'construction noise']) or \

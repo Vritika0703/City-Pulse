@@ -8,27 +8,47 @@ const DEFAULT_ZOOM = 10;
 const NEWEST_PULSES = 6;          // newest reports get an animated ring
 const HOTSPOT_CELL_DEG = 0.008;   // ~800 m grid used to find the densest area
 
-const TYPE_COLOR_MAP = [
-  { keys: ['electrical', 'power', 'street light'],      color: '#facc15', label: 'Electrical / Power' },
-  { keys: ['water', 'sewer', 'flood'],                   color: '#38bdf8', label: 'Water / Sewer' },
-  { keys: ['noise'],                                     color: '#a78bfa', label: 'Noise' },
-  { keys: ['heat', 'hot water'],                         color: '#fb923c', label: 'Heat / Hot Water' },
-  { keys: ['rodent', 'pest'],                            color: '#84cc16', label: 'Rodent / Pest' },
-  { keys: ['sanit', 'dirty', 'garbage', 'trash'],        color: '#f472b6', label: 'Sanitation' },
-  { keys: ['traffic', 'parking'],                        color: '#f97316', label: 'Traffic / Parking' },
-  { keys: ['building', 'elevator'],                      color: '#e2e8f0', label: 'Building' },
+// Preferred colour per complaint family. Checked in order, so heat comes before
+// water: NYC's "HEAT/HOT WATER" type contains the word "water".
+const FAMILY_COLORS = [
+  { keys: ['heat', 'hot water', 'boiler'],                           color: '#fb923c' }, // orange
+  { keys: ['rodent', 'pest', 'rat'],                                 color: '#84cc16' }, // lime
+  { keys: ['noise'],                                                 color: '#a78bfa' }, // violet
+  { keys: ['water', 'sewer', 'flood', 'leak', 'drain'],              color: '#38bdf8' }, // sky
+  { keys: ['sanit', 'dirty', 'garbage', 'trash', 'litter', 'waste'], color: '#f472b6' }, // pink
+  { keys: ['traffic', 'parking', 'vehicle', 'driveway'],             color: '#facc15' }, // yellow
+  { keys: ['electric', 'power', 'street light'],                     color: '#2dd4bf' }, // teal
+  { keys: ['building', 'elevator', 'plumbing', 'paint', 'door'],     color: '#e2e8f0' }, // light grey
 ];
-const DEFAULT_COLOR = '#ef4444';
-const DEFAULT_LABEL = 'Other Incident';
+// Extra well-separated colours for additional types (e.g. two kinds of Noise)
+const EXTRA_COLORS = ['#ef4444', '#22c55e', '#3b82f6', '#d946ef', '#f59e0b', '#14b8a6', '#fda4af', '#93c5fd', '#bef264', '#c4b5fd'];
+const MAX_TYPES = 10;
+const OTHER = { label: 'Other', color: '#64748b' };
 
-const HEAT_GRADIENT = { 0.15: '#1e3a8a', 0.35: '#2563eb', 0.55: '#22d3ee', 0.75: '#facc15', 1.0: '#ef4444' };
-
-function classify(type) {
+function familyColor(type) {
   const t = (type || '').toLowerCase();
-  for (const entry of TYPE_COLOR_MAP) {
-    if (entry.keys.some(k => t.includes(k))) return entry;
+  const fam = FAMILY_COLORS.find(f => f.keys.some(k => t.includes(k)));
+  return fam ? fam.color : null;
+}
+
+// Give each actual complaint type its own colour: most frequent types first,
+// family colour when still free, otherwise the next unused extra colour.
+function assignTypeColors(locations) {
+  const counts = new Map();
+  for (const loc of locations || []) {
+    const t = loc?.type || 'Incident';
+    counts.set(t, (counts.get(t) || 0) + 1);
   }
-  return { color: DEFAULT_COLOR, label: DEFAULT_LABEL };
+  const ordered = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
+  const used = new Set();
+  const map = new Map();
+  ordered.slice(0, MAX_TYPES).forEach(type => {
+    let color = familyColor(type);
+    if (!color || used.has(color)) color = EXTRA_COLORS.find(c => !used.has(c)) || OTHER.color;
+    used.add(color);
+    map.set(type, { label: type, color });
+  });
+  return map;
 }
 
 // Deterministic jitter so stacked reports at one address separate slightly
@@ -82,6 +102,8 @@ export default function MapChart({ locations, mapCenter }) {
   const [mode, setMode] = useState('points');       // 'points' | 'heat'
   const [hidden, setHidden] = useState(() => new Set());
 
+  const typeColors = useMemo(() => assignTypeColors(locations), [locations]);
+
   // Normalise incoming locations once per dataset
   const points = useMemo(() => {
     if (!Array.isArray(locations)) return [];
@@ -91,7 +113,7 @@ export default function MapChart({ locations, mapCenter }) {
       const lon = Number(loc?.lon);
       if (!isFinite(lat) || !isFinite(lon) || lat === 0 || lon === 0) return;
       const seed = `${lat},${lon},${i}`;
-      const cls = classify(loc?.type);
+      const cls = typeColors.get(loc?.type || 'Incident') || OTHER;
       out.push({
         lat: lat + jitter(seed + 'a'),
         lon: lon + jitter(seed + 'b'),
@@ -104,7 +126,7 @@ export default function MapChart({ locations, mapCenter }) {
       });
     });
     return out;
-  }, [locations]);
+  }, [locations, typeColors]);
 
   const legend = useMemo(() => {
     const counts = new Map();
@@ -291,7 +313,7 @@ export default function MapChart({ locations, mapCenter }) {
               <button key={label} type="button" className={`cp-legend-row${off ? ' off' : ''}`} onClick={() => toggleType(label)}
                 title={off ? `Show ${label}` : `Hide ${label}`}>
                 <span className="cp-legend-dot" style={{ background: color, boxShadow: off ? 'none' : `0 0 6px ${color}99` }} />
-                <span className="cp-legend-label">{label}</span>
+                <span className="cp-legend-label" title={label}>{label}</span>
                 <span className="cp-legend-count">{count}</span>
               </button>
             );
