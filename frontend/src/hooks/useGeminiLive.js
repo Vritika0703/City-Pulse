@@ -31,7 +31,9 @@ function processClientData(data, queryStr = "") {
   const locations = validLocs.slice(0, 300).map(d => ({
     lat: parseFloat(d.latitude),
     lon: parseFloat(d.longitude),
-    type: d.complaint_type || "Urban Issue"
+    type: d.complaint_type || "Urban Issue",
+    date: (d.created_date || "").slice(0, 16),
+    status: d.status
   }));
 
   const mapCenter = BOROUGH_COORDS[topB] || { lat: 40.7128, lon: -74.0060, zoom: 11 };

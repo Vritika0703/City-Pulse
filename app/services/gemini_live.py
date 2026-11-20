@@ -678,7 +678,8 @@ class GeminiLiveService:
                     for ct, records in by_type.items():
                         sample = records[:per_type_limit]
                         for d in sample:
-                            map_locs.append({"lat": float(d["latitude"]), "lon": float(d["longitude"]), "type": d.get("complaint_type", "Unknown")})
+                            map_locs.append({"lat": float(d["latitude"]), "lon": float(d["longitude"]), "type": d.get("complaint_type", "Unknown"),
+                                             "date": (d.get("created_date") or "")[:16], "status": d.get("status")})
                 else:
                     map_locs = []
 
