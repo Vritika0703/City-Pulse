@@ -7,6 +7,9 @@ const DEFAULT_CENTER = [40.7128, -74.0060];
 const DEFAULT_ZOOM = 10;
 const NEWEST_PULSES = 6;          // newest reports get an animated ring
 const HOTSPOT_CELL_DEG = 0.008;   // ~800 m grid used to find the densest area
+const LEGEND_COLLAPSED_ROWS = 4;  // compact legend shows the top types only
+// All five boroughs; used for the opening view before any question is asked
+const NYC_BOUNDS = [[40.4774, -74.2591], [40.9176, -73.7004]];
 
 // Preferred colour per complaint family. Checked in order, so heat comes before
 // water: NYC's "HEAT/HOT WATER" type contains the word "water".
@@ -24,6 +27,8 @@ const FAMILY_COLORS = [
 const EXTRA_COLORS = ['#ef4444', '#22c55e', '#3b82f6', '#d946ef', '#f59e0b', '#14b8a6', '#fda4af', '#93c5fd', '#bef264', '#c4b5fd'];
 const MAX_TYPES = 10;
 const OTHER = { label: 'Other', color: '#64748b' };
+
+const HEAT_GRADIENT = { 0.15: '#1e3a8a', 0.35: '#2563eb', 0.55: '#22d3ee', 0.75: '#facc15', 1.0: '#ef4444' };
 
 function familyColor(type) {
   const t = (type || '').toLowerCase();
@@ -94,13 +99,14 @@ function findHotspot(points) {
   return { lat: best.lat / best.n, lon: best.lon / best.n, count: best.n };
 }
 
-export default function MapChart({ locations, mapCenter }) {
+export default function MapChart({ locations, mapCenter, overview = false }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
   const layersRef = useRef({});
   const userMovedRef = useRef(false);
   const [mode, setMode] = useState('points');       // 'points' | 'heat'
   const [hidden, setHidden] = useState(() => new Set());
+  const [legendOpen, setLegendOpen] = useState(false);
 
   const typeColors = useMemo(() => assignTypeColors(locations), [locations]);
 
@@ -143,6 +149,7 @@ export default function MapChart({ locations, mapCenter }) {
   // New dataset: show every category again and allow auto-framing
   useEffect(() => {
     setHidden(new Set());
+    setLegendOpen(false);
     userMovedRef.current = false;
   }, [points]);
 
@@ -150,6 +157,10 @@ export default function MapChart({ locations, mapCenter }) {
     const map = mapRef.current;
     if (!map) return;
     map.invalidateSize();
+    if (overview) {
+      map.fitBounds(NYC_BOUNDS, { padding: [12, 12], animate });
+      return;
+    }
     const pts = visible.length ? visible : points;
     if (pts.length) {
       map.fitBounds(robustBounds(pts), { padding: [48, 48], maxZoom: 15, animate });
@@ -157,7 +168,7 @@ export default function MapChart({ locations, mapCenter }) {
       const center = mapCenter ? [mapCenter.lat, mapCenter.lon] : DEFAULT_CENTER;
       map.setView(center, mapCenter?.zoom || DEFAULT_ZOOM, { animate });
     }
-  }, [visible, points, mapCenter]);
+  }, [visible, points, mapCenter, overview]);
 
   // Create the map once
   useEffect(() => {
@@ -258,8 +269,9 @@ export default function MapChart({ locations, mapCenter }) {
         core.addTo(layers.points);
       }
 
-      // Pulsing rings on the newest reports (backend sends rows newest-first)
-      [...visible].sort((a, b) => a.order - b.order).slice(0, NEWEST_PULSES).forEach(p => {
+      // Pulsing rings on the newest reports (backend sends rows newest-first);
+      // skipped on the opening city overview to keep it calm
+      if (!overview) [...visible].sort((a, b) => a.order - b.order).slice(0, NEWEST_PULSES).forEach(p => {
         L.marker([p.lat, p.lon], {
           interactive: false, keyboard: false,
           icon: L.divIcon({ className: 'cp-noevents', html: `<div class="cp-pulse" style="--c:${p.color}"></div>`, iconSize: [28, 28], iconAnchor: [14, 14] }),
@@ -267,7 +279,7 @@ export default function MapChart({ locations, mapCenter }) {
       });
     }
 
-    const hot = findHotspot(visible);
+    const hot = overview ? null : findHotspot(visible);
     if (hot) {
       L.circle([hot.lat, hot.lon], {
         renderer: layers.renderer,  // same canvas as markers so it can't swallow their clicks
@@ -279,14 +291,14 @@ export default function MapChart({ locations, mapCenter }) {
         icon: L.divIcon({ className: 'cp-noevents', html: `<div class="cp-hotspot-label">HOTSPOT · ${hot.count}</div>`, iconSize: [96, 18], iconAnchor: [48, 44] }),
       }).addTo(layers.overlay);
     }
-  }, [visible, mode]);
+  }, [visible, mode, overview]);
 
   // Frame each new dataset
   useEffect(() => {
     if (!mapRef.current) return;
     const id = requestAnimationFrame(() => fitToData(true));
     return () => cancelAnimationFrame(id);
-  }, [points, mapCenter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [points, mapCenter, overview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleType = (label) => {
     setHidden(prev => {
@@ -307,7 +319,7 @@ export default function MapChart({ locations, mapCenter }) {
       {legend.length > 0 && (
         <div className="cp-legend">
           <div className="cp-legend-title">Incident types</div>
-          {legend.map(({ label, color, count }) => {
+          {(legendOpen ? legend : legend.slice(0, LEGEND_COLLAPSED_ROWS)).map(({ label, color, count }) => {
             const off = hidden.has(label);
             return (
               <button key={label} type="button" className={`cp-legend-row${off ? ' off' : ''}`} onClick={() => toggleType(label)}
@@ -318,6 +330,11 @@ export default function MapChart({ locations, mapCenter }) {
               </button>
             );
           })}
+          {legend.length > LEGEND_COLLAPSED_ROWS && (
+            <button type="button" className="cp-legend-more" onClick={() => setLegendOpen(o => !o)}>
+              {legendOpen ? 'Show less' : `+${legend.length - LEGEND_COLLAPSED_ROWS} more types`}
+            </button>
+          )}
           <div className="cp-legend-foot">
             {visible.length === points.length ? `${points.length} incidents plotted` : `${visible.length} of ${points.length} shown`}
           </div>
@@ -333,7 +350,8 @@ export default function MapChart({ locations, mapCenter }) {
         <div className="cp-zoom">
           <button type="button" aria-label="Zoom in" onClick={() => zoomBy(1)}>+</button>
           <button type="button" aria-label="Zoom out" onClick={() => zoomBy(-1)}>−</button>
-          <button type="button" aria-label="Fit to incidents" title="Fit to incidents"
+          <button type="button" aria-label="Fit to incidents"
+            title={overview ? 'Show all of NYC' : 'Fit to incidents'}
             onClick={() => { userMovedRef.current = false; fitToData(true); }}>⤢</button>
         </div>
       </div>

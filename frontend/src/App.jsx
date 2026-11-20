@@ -449,7 +449,7 @@ function CityPulseApp() {
                 <span className="text-[12px] font-black text-blue-400 uppercase tracking-widest animate-pulse">{activeLoadingMessage}</span>
               </div>
             ) : (
-              <MapChart locations={charts?.locations || []} mapCenter={charts?.map_center} />
+              <MapChart locations={charts?.locations || []} mapCenter={charts?.map_center} overview={!hasAskedQuery} />
             )}
             <div className="absolute top-4 left-4 pointer-events-none transition-all group-hover:scale-105">
               <div className="px-4 py-2 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 flex items-center gap-3 shadow-2xl z-30">
